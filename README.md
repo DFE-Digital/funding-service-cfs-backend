@@ -38,7 +38,7 @@ Clone the repository:
 
 ```bash
 git clone <repository-url>
-cd <repository-name>
+cd unding-service-cfs-backend
 ```
 
 Restore dependencies:
