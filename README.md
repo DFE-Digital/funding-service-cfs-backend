@@ -38,8 +38,8 @@ Before running the application locally, ensure you have:
 Clone the repository:
 
 ```bash
-git clone <repository-url>
-cd unding-service-cfs-backend
+git clone https://github.com/DFE-Digital/funding-service-cfs-backend.git
+cd funding-service-cfs-backend
 ```
 
 Restore dependencies:
