@@ -1,0 +1,55 @@
+parameters:
+- name: ServiceName
+  type: string
+  default: ''
+- name: ResourceGroup
+  type: 'string'
+  default: ''
+- name: azureSubscription
+  type: 'string'
+  default: ''
+- name: overrideParameters
+  type: 'string'
+  default: ''
+- name: templateName
+  type: string
+  default: ''
+
+steps:
+# Debug Paramter values
+- powershell: |
+    # Write your PowerShell commands here.
+    Write-Host "ServiceName         : '${{ parameters.ServiceName }}'"
+    Write-Host "ResourceGroup       : '${{ parameters.ResourceGroup }}'"
+    Write-Host "azureSubscription   : '${{ parameters.azureSubscription }}'"
+
+    if ([string]::IsNullOrWhiteSpace("${{ parameters.ResourceGroup }}")) {
+    throw "ResourceGroup paramter empty"
+    }
+
+    if ("${{ parameters.ResourceGroup }}" -match '\$\(') {
+     throw "ResourceGroup paramter was not resolved .value recevied: '${{ parameters.ResourceGroup }}'"
+    }
+  displayName: 'Validate ARM Parametres'
+
+- task: DownloadPipelineArtifact@2
+  inputs:
+    source: 'specific'
+    project: 'Funding Transformation Programme'
+    pipeline: '447'
+    preferTriggeringPipeline: false
+    runVersion: 'latestFromBranch'
+    runBranch: 'refs/heads/master'
+    artifact: CalculateFunding.Shared.ArmTemplates
+    path: $(Pipeline.Workspace)/_templates
+
+- task: AzureResourceGroupDeployment@2
+  displayName: 'Azure Deployment:Create Or Update Resource Group action on rg-t1te-cfs for PR App Services'
+  inputs:
+    azureSubscription: '${{ parameters.azureSubscription }}'
+    resourceGroupName: '${{ parameters.ResourceGroup }}'
+    location: 'west europe'
+    csmFile: '$(Pipeline.Workspace)/_templates/${{ parameters.templateName}}/template.json'
+    overrideParameters: '${{ parameters.overrideParameters }}'
+    csmParametersFile: '$(Pipeline.Workspace)/_templates/${{ parameters.templateName}}/test-parameters.json'
+    deploymentName: '${{ parameters.ServiceName }}-API-FA-ARM-PR'

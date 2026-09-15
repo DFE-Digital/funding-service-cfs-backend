@@ -1,0 +1,322 @@
+name: $(Rev:r)
+
+trigger:
+  branches:
+    include:
+      - master
+      - providers
+      - fdps
+      - releases/*
+
+  paths:
+    include:
+      - CalculateFunding.Api.Policy
+      - CalculateFunding.Functions.Policy
+      - CalculateFunding.Services.Policy
+      - CalculateFunding.Services.Core
+      - CalculateFunding.Models.Policy
+      - CalculateFunding.Api.Policy.UnitTests
+      - CalculateFunding.Functions.Policy.UnitTests
+      - CalculateFunding.Services.Policy.UnitTests
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - name: ProjectName
+    value: Policy
+
+  - name: ServiceName
+    value: Policy
+
+  - name: templateName
+    value: policy
+
+  - name: releaseconfiguration
+    value: Release
+
+  - name: DOTNET_SKIP_FIRST_TIME_EXPERIENCE
+    value: true
+
+  - name: DOTNET_CLI_TELEMETRY_OPTOUT 
+    value: true
+
+  - name: BuildApi
+    value: true
+
+  - name: BuildFunction
+    value: true
+
+  - name: SecureSmokeTest
+    value: false
+
+  - name: runIntegrationTests
+    value: true
+
+  # Docker / ACR
+  - name: acrName
+    value: cfsdevsharedacr
+
+  - name: acrLoginServer
+    value: cfsdevsharedacr.azurecr.io
+
+  - name: dockerRegistryServiceConnection
+    value: CFS-DEV-ACR
+
+  - name: imageTag
+    value: $(Build.BuildId)
+
+  - name: patToken
+    value: $(System.AccessToken)
+
+  # Variable Groups
+  - group: Dotnet Core SDK Version
+  - group: Azure Settings Integration-v2
+  - group: Integration Tests Info - Integration-PR
+  - group: Integration Tests KV - Integration-PR
+  - group: Shared Infrastructure - Integration - v2
+  - group: Resource Tags test-v2 integration-v2
+  - group: Feature Toggles Integration-v2
+
+# ==================================================
+# STAGE 1 - BUILD & PUSH DOCKER IMAGES
+# ==================================================
+
+stages:
+- stage: Build
+  displayName: Build and Push Images
+
+  jobs:
+  - job: DockerBuild
+    displayName: Build Docker Images
+    condition: succeeded()
+    steps:
+    - task: Docker@2
+      displayName: Build API Image
+      condition: eq(variables['BuildApi'], 'true')
+      inputs:
+        command: build
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: policy-api
+        Dockerfile: $(Build.SourcesDirectory)/CalculateFunding.Api.Policy/Dockerfile
+        buildContext: $(Build.SourcesDirectory)
+        arguments: >
+          --build-arg FEED_PAT=$(patToken)
+        tags: |
+          $(imageTag)
+          latest
+
+    - task: Docker@2
+      displayName: Push API Image
+      condition: eq(variables['BuildApi'], 'true')
+      inputs:
+        command: push
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: policy-api
+        tags: |
+          $(imageTag)
+          latest
+
+
+    - task: Docker@2
+      displayName: Build Function Image
+      condition: eq(variables['BuildFunction'], 'true')
+      inputs:
+        command: build
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: policy-function
+        dockerfile: $(Build.SourcesDirectory)/CalculateFunding.Functions.Policy/Dockerfile
+        buildContext: $(Build.SourcesDirectory)
+        arguments: >
+          --build-arg FEED_PAT=$(patToken)
+        tags: |
+          $(imageTag)
+          latest
+
+    - task: Docker@2
+      displayName: Push Function Image
+      condition: eq(variables['BuildFunction'], 'true')
+      inputs:
+        command: push
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: policy-function
+        tags: |
+          $(imageTag)
+          latest
+
+# ==================================================
+# STAGE 2 - PR INFRA + DEPLOY
+# ==================================================
+
+- stage: PR_Infra
+  displayName: Deploy PR Infrastructure
+  dependsOn: Build
+  condition: succeeded()
+
+  jobs:
+  - job: DeployInfra
+
+    steps:
+
+    - template: templates/standard-service-arm-deploy-linux.yml
+      parameters:
+        ServiceName: ${{ variables.ServiceName }}
+        ResourceGroup: $(ResourceGroup)
+        azureSubscription: $(azureSubscription)
+        templateName : $(templateName)
+        overrideParameters: '-environmentKey "$(EnvironmentKey)" -productVersion "pr" -appServiceLogRetentionDays "0" -sendWebLogsToStorage "false" -enableExceptionMessages "false" -FUNCTIONS_EXTENSION_VERSION $(FUNCTIONS_EXTENSION_VERSION_net8) -apiHostingPlanName "$(apiHostingPlanNamePR)" -functionHostingPlanName "$(functionHostingPlanNamePR)" -keyVaultName "$(keyVaultNamePR)" -sharedLogStorageName "$(sharedLogStorageName)" -searchName "$(searchName)" -environmentTag "$(environmentTag)" -parentBusinessTag "$(parentBusinessTag)" -portfolioTag "$(portfolioTag)" -productTag "$(productTag)" -serviceLineTag "$(serviceLineTag)" -Http5xxTH "100" -Http401TH "100" -HttpResponseTimeTH "100" -applicationInsightsName "$(applicationInsightsName)" -logAnalyticsWorkspaceName "$(logAnalyticsWorkspaceName)" -dfeT1VNetResourceGroupName "$(dfeT1VNetResourceGroupName)" -dfeT1VirtualNetworkName "$(dfeT1VirtualNetworkName)" -appSrvSubnetName "$(appSrvSubnetNamePR)" -intPolicyAStoVNet "true" -funcsSubnetName "$(funcsSubnetNamePR)" -intPolicyFAtoVNet "true" -calcEngineFASubnetName "$(calcEngineFASubnetNamePR)" -ipSecurityRestrictionsEnabled "false" -ipSecurityRestrictionsEnabledFA "false" -ipSecurityRestrictionsEnabledFA "false" -UseSQLDB "true"'
+
+    - template: templates/standard-service-pr-ci-build-prinfra-linux.yml
+      parameters:
+        ProjectName: ${{ variables.ProjectName }}
+        ServiceName: ${{ variables.ServiceName }}
+        DotnetCoreSdkVersion: $(DotnetCoreSdkVersionNet8)
+        ApiFrameworkVersion: net8.0
+        ResourceGroup: $(ResourceGroup)
+        azureSubscription: $(azureSubscription)
+        environmentKey: $(EnvironmentKey)
+        ServiceBusSettings: $(ServiceBusSettingsPR)
+        BuildApi: ${{ variables.BuildApi }}
+        BuildFunction: ${{ variables.BuildFunction }}
+        SecureSmokeTest: ${{ variables.SecureSmokeTest }}
+        APIKey: $(svcapipolicy)
+
+# ==================================================
+# STAGE 3 - INTEGRATION TESTS
+# ==================================================
+
+
+- stage: IntegrationTests
+  displayName: Run Integration Tests
+  dependsOn: PR_Infra
+  condition: and(
+    succeeded(),
+    eq(variables['Build.Reason'], 'PullRequest'),
+    eq(variables['runIntegrationTests'], 'true'))
+
+  jobs:
+  - job: RunTests
+
+    steps:
+
+    # ✅ Get agent public IP (PowerShell version)
+    - task: PowerShell@2
+      displayName: 'Get Outbound IP'
+      name: GetAgentIP
+      inputs:
+        targetType: 'inline'
+        script: |
+          $ip = Invoke-RestMethod -Uri "https://api.ipify.org"
+          Write-Host "##vso[task.setvariable variable=agentIp;]$ip"
+          Write-Host "Agent public IP: $ip"
+    
+
+    # ✅ Add firewall rules
+    - task: AzureCLI@2
+      displayName: 'Add Agent IP to Firewall'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: pscore
+        scriptLocation: inlineScript
+        inlineScript: |
+          az storage account network-rule add --resource-group "$(ResourceGroup)" --account-name "$(sharedStorageName)" --ip-address "$(agentIp)"
+          az sql server firewall-rule create --resource-group "$(ResourceGroup)" --server "$(sqlServerName)" --name "AllowAgentIP-$(Build.BuildId)" --start-ip-address "$(agentIp)" --end-ip-address "$(agentIp)"
+
+    # ✅ Wait
+    - task: PowerShell@2
+      displayName: 'Wait before running integration tests'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "Waiting for 15 seconds to allow background job to start..."
+          Start-Sleep -Seconds 15    
+
+    # ✅ Restore using private feed
+    - task: DotNetCoreCLI@2
+      displayName: Restore Integration Test Projects
+      inputs:
+        command: restore
+        projects: |
+          **/*Api.${{ variables.ProjectName }}.IntegrationTests/*.csproj
+        feedsToUse: select
+        vstsFeed: 'ecf37bc0-472b-47bf-91e3-6774809fd194'
+
+    # ✅ Run Integration Tests (FIXED env mapping)
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet test for Integration tests'
+      inputs:
+        command: test
+        projects: |
+          **/*Api.${{ variables.ProjectName }}.IntegrationTests/*.csproj
+        # arguments: '--configuration Release --no-restore'
+        arguments: '--filter "FullyQualifiedName!~IntegrationTests"'
+      env:
+        AzureConfiguration__ConnectionString: $(AzureConfigurationConnectionString)
+        AzureSignalRConnectionString: $(AzureSignalRConnectionString)
+
+        AzureStorageSettings__ConnectionString: $(AzureStorageSettings)
+        CommonStorageSettings__ConnectionString: $(AzureStorageSettings)
+
+        CosmosDbSettings__ConnectionString: $(CosmosDbSettings)
+        CosmosDbSettings__ContainerName: policy
+        CosmosDbSettings__DatabaseName: $(CosmosDbSettingsDatabaseName)
+
+        releaseManagementSql__ConnectionString: 'server=tcp:sql-t1in-cfs-v2.database.windows.net,1433;Database=cfs-t1in-rm-db;Authentication=Active Directory Service Principal;User ID=$(sqlclientid);Password=$(sqlclientsecret);Encrypt=True;TrustServerCertificate=False;Command Timeout=300;MultipleActiveResultSets=true;'
+        RedisSettings__CacheConnection: $(RedisSettings)
+
+        ResourceGroup: $(ResourceGroup)
+        SearchServiceKey: $(SearchServiceKey)
+        SearchServiceName: $(SearchServiceName)
+
+        ServiceBusSettings__ConnectionString: $(ServiceBusSettingsPR)
+
+        storageConfiguration__ConnectionString: $(AzureStorageSettings)
+
+        WEBSITE_HTTPLOGGING_CONTAINER_URL: $(WEBSITE_HTTPLOGGING_CONTAINER_URL)
+
+        apiKeyMiddleware__apiKey: $(svcapipolicy)
+
+        cfsClient__ApiEndpoint: $(cfsClientApiEndpoint)
+
+        calcsClient__ApiEndpoint: $(calcsClientApiEndpoint)
+        calcsClient__ApiKey: $(svcapicalcs)
+
+        jobsClient__ApiEndpoint: $(jobsClientApiEndpoint)
+        jobsClient__ApiKey: $(svcapijobs)
+
+        policiesClient__ApiEndpoint: $(policiesClientApiEndpoint)
+        policiesClient__ApiKey: $(svcapipolicy)
+
+        resultsClient__ApiEndpoint: $(resultsClientApiEndpoint)
+        resultsClient__ApiKey: $(svcapiresults)
+
+        specificationsClient__ApiEndpoint: $(specificationsClientApiEndpoint)
+        specificationsClient__ApiKey: $(svcapispecs)
+
+    # ✅ Cleanup firewall
+    - task: AzureCLI@2
+      displayName: Remove Agent IP from Firewalls
+      condition: always()
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          az storage account network-rule remove \
+            --resource-group "$(ResourceGroup)" \
+            --account-name "$(sharedStorageName)" \
+            --ip-address "$(agentIp)"
+
+          az sql server firewall-rule delete \
+            --resource-group "$(ResourceGroup)" \
+            --server "$(sqlServerName)" \
+            --name "AllowAgentIP-$(Build.BuildId)"
+
+    - task: AzureCLI@2
+      condition: and(failed(), eq(variables['Build.Reason'], 'PullRequest'))
+      displayName: 'Reset in-progress swap on failure'
+      inputs:
+         azureSubscription: $(azureSubscription)
+         scriptType: pscore
+         scriptLocation: inlineScript
+         inlineScript: 'az webapp deployment slot swap --action reset --slot Staging --name app-$(EnvironmentKey)-${{ variables.ServiceName }}-pr --resource-group $(ResourceGroup)'

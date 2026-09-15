@@ -1,0 +1,327 @@
+﻿using AutoMapper;
+using CalculateFunding.Common.ApiClient;
+using CalculateFunding.Common.Config.ApiClient.CalcEngine;
+using CalculateFunding.Common.Config.ApiClient.Dataset;
+using CalculateFunding.Common.Config.ApiClient.FDS;
+using CalculateFunding.Common.Config.ApiClient.Graph;
+using CalculateFunding.Common.Config.ApiClient.Jobs;
+using CalculateFunding.Common.Config.ApiClient.Policies;
+using CalculateFunding.Common.Config.ApiClient.Providers;
+using CalculateFunding.Common.Config.ApiClient.Results;
+using CalculateFunding.Common.Config.ApiClient.Specifications;
+using CalculateFunding.Common.CosmosDb;
+using CalculateFunding.Common.EfCore.UnitOfWork;
+using CalculateFunding.Common.Interfaces;
+using CalculateFunding.Common.JobManagement;
+using CalculateFunding.Common.Models;
+using CalculateFunding.Common.Storage;
+using CalculateFunding.Functions.Calcs.ServiceBus;
+using CalculateFunding.Models.Calcs;
+using CalculateFunding.Models.Publishing;
+using CalculateFunding.Repositories.Common.Search;
+using CalculateFunding.Services.Calcs;
+using CalculateFunding.Services.Calcs.Analysis;
+using CalculateFunding.Services.Calcs.Analysis.ObsoleteItems;
+using CalculateFunding.Services.Calcs.Caching;
+using CalculateFunding.Services.Calcs.CodeGen;
+using CalculateFunding.Services.Calcs.Interfaces;
+using CalculateFunding.Services.Calcs.Interfaces.CodeGen;
+using CalculateFunding.Services.Calcs.MappingProfiles;
+using CalculateFunding.Services.Calcs.Validators;
+using CalculateFunding.Services.CodeGeneration.VisualBasic;
+using CalculateFunding.Services.CodeMetadataGenerator;
+using CalculateFunding.Services.CodeMetadataGenerator.Interfaces;
+using CalculateFunding.Services.Compiler;
+using CalculateFunding.Services.Compiler.Analysis;
+using CalculateFunding.Services.Compiler.Interfaces;
+using CalculateFunding.Services.Compiler.Languages;
+using CalculateFunding.Services.Core.Extensions;
+using CalculateFunding.Services.Core.Helpers;
+using CalculateFunding.Services.Core.Interfaces;
+using CalculateFunding.Services.Core.Options;
+using CalculateFunding.Services.Core.Services;
+using CalculateFunding.Services.DeadletterProcessor;
+using CalculateFunding.Services.Processing.Interfaces;
+using FluentValidation;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.FeatureManagement;
+using Polly;
+using Polly.Bulkhead;
+using System.Configuration;
+using ServiceCollectionExtensions = CalculateFunding.Services.Core.Extensions.ServiceCollectionExtensions;
+
+namespace CalculateFunding.Functions.Calcs
+{
+    public class Startup
+    {
+        public static IServiceProvider RegisterComponents(IServiceCollection builder, IConfiguration azureFuncConfig = null)
+        {
+            IConfigurationRoot config = ConfigHelper.AddConfig(azureFuncConfig);
+
+            return RegisterComponents(builder, config);
+        }
+
+        public static IServiceProvider RegisterComponents(IServiceCollection builder, IConfigurationRoot config)
+        {
+            return Register(builder, config);
+        }
+
+        private static IServiceProvider Register(IServiceCollection builder, IConfigurationRoot config)
+        {
+            builder.AddAppConfiguration();
+            
+            builder.AddScoped<IObsoleteReferenceCleanUp, EnumReferenceCleanUp>();
+            builder.AddScoped<IObsoleteReferenceCleanUp, FundingLineReferenceCleanUp>();
+            builder.AddScoped<IObsoleteReferenceCleanUp, DataFieldReferenceCleanUp>();
+            builder.AddScoped<IObsoleteItemCleanup, ObsoleteItemCleanup>();
+
+            builder.AddSingleton<IUserProfileProvider, UserProfileProvider>();
+
+            builder.AddFeatureManagement();
+
+            builder.AddSingleton<IConfiguration>(ctx => config);
+
+            // These registrations of the functions themselves are just for the DebugQueue. Ideally we don't want these registered in production
+            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+            {
+                builder.AddScoped<CalcsAddRelationshipToBuildProject>();
+                builder.AddScoped<OnCalcsInstructAllocationResultsFailure>();
+                builder.AddScoped<OnCalcsInstructAllocationResults>();
+                builder.AddScoped<OnCalculationAggregationsJobCompleted>();
+                builder.AddScoped<OnDataDefinitionChanges>();
+                builder.AddScoped<OnApplyTemplateCalculations>();
+                builder.AddScoped<OnApplyTemplateCalculationsFailure>();
+                builder.AddScoped<OnReIndexSpecificationCalculationRelationships>();
+                builder.AddScoped<OnReIndexSpecificationCalculationRelationshipsFailure>();
+                builder.AddScoped<OnDeleteCalculations>();
+                builder.AddScoped<OnDeleteCalculationsFailure>();
+                builder.AddScoped<OnUpdateCodeContextCache>();
+                builder.AddScoped<OnUpdateCodeContextCacheFailure>();
+                builder.AddScoped<OnApproveAllCalculations>();
+                builder.AddScoped<OnApproveAllCalculationsFailure>();
+                builder.AddScoped<OnReferencedSpecificationReMap>();
+                builder.AddScoped<OnReferencedSpecificationReMapFailure>();
+            }
+
+            builder.AddSingleton<IFundingLineRoundingSettings, FundingLineRoundingSettings>();
+            builder.AddScoped<IApplyTemplateCalculationsService, ApplyTemplateCalculationsService>();
+            builder.AddDbContext<Repositories.Common.EFCore.EntityModel.CfsDbContext>((options) =>
+            {
+                Common.Sql.Interfaces.ISqlSettings sqlSettings = new Common.Sql.SqlSettings();
+                config.Bind("releaseManagementSql", sqlSettings);
+                options.UseSqlServer(sqlSettings.ConnectionString);
+            });
+
+            builder.AddTransient<IUnitOfWork, UnitOfWork>(ctx => new UnitOfWork(ctx.GetRequiredService<Repositories.Common.EFCore.EntityModel.CfsDbContext>()));
+            bool useSqlDb = config.GetValue<bool>("UseSQLDB");
+
+            if (useSqlDb)
+            {
+                builder.AddScoped<ICalculationsRepository, CalculationsRepository>();
+            }
+            else
+            {
+
+                builder
+                .AddSingleton<ICalculationsRepository, CosmosCalculationsRepository>((ctx) =>
+                {
+                    CosmosDbSettings calcsVersioningDbSettings = new CosmosDbSettings();
+
+                    config.Bind("CosmosDbSettings", calcsVersioningDbSettings);
+
+                    calcsVersioningDbSettings.ContainerName = "calcs";
+
+                    CosmosRepository resultsRepostory = new CosmosRepository(calcsVersioningDbSettings);
+
+                    return new CosmosCalculationsRepository(resultsRepostory);
+                });
+            }
+
+            builder.AddScoped<ICalculationService, CalculationService>()
+                .AddScoped<IInstructionAllocationJobCreation, InstructionAllocationJobCreation>()
+                .AddScoped<ICreateCalculationService, CreateCalculationService>()
+                .AddScoped<IReferencedSpecificationReMapService, ReferencedSpecificationReMapService>();
+
+            builder.AddScoped<ICalculationNameInUseCheck, CalculationNameInUseCheck>();
+            builder.AddScoped<ICalculationsSearchService, CalculationSearchService>();
+            builder.AddSingleton<ICalculationCodeReferenceUpdate, CalculationCodeReferenceUpdate>();
+            builder.AddScoped<IValidator<Calculation>, CalculationModelValidator>();
+            builder.AddScoped<IPreviewService, PreviewService>();
+            builder.AddSingleton<ICompilerFactory, CompilerFactory>();
+            //builder.AddSingleton<IDatasetRepository, DatasetRepository>();
+            builder.AddScoped<IJobService, JobService>();
+            builder.AddScoped<IApproveAllCalculationsJobAction, ApproveAllCalculationsJobAction>();
+            builder
+                .AddSingleton<CSharpCompiler>()
+                .AddSingleton<VisualBasicCompiler>()
+                .AddSingleton<VisualBasicSourceFileGenerator>();
+            builder.AddSingleton<ISourceFileGeneratorProvider, SourceFileGeneratorProvider>();
+            builder.AddScoped<IValidator<PreviewRequest>, PreviewRequestModelValidator>();
+            builder.AddScoped<IBuildProjectsService, BuildProjectsService>();
+
+            if (useSqlDb)
+            {
+                builder.AddScoped<IBuildProjectsRepository, BuildProjectsRepository>();
+            }
+            {
+
+                builder
+                .AddSingleton<IBuildProjectsRepository, CosmosBuildProjectsRepository>((ctx) =>
+                {
+                    CosmosDbSettings calcsVersioningDbSettings = new CosmosDbSettings();
+
+                    config.Bind("CosmosDbSettings", calcsVersioningDbSettings);
+
+                    calcsVersioningDbSettings.ContainerName = "calcs";
+
+                    CosmosRepository resultsRepostory = new CosmosRepository(calcsVersioningDbSettings);
+
+                    return new CosmosBuildProjectsRepository(resultsRepostory);
+                });
+            }
+
+            builder.AddSingleton<ICodeMetadataGeneratorService, ReflectionCodeMetadataGenerator>();
+            builder.AddSingleton<ICancellationTokenProvider, InactiveCancellationTokenProvider>();
+            builder.AddScoped<ISourceCodeService, SourceCodeService>();
+            builder.AddScoped<IDeadletterService, DeadletterService>();
+            builder.AddScoped<IJobManagement, JobManagement>();
+
+            MapperConfiguration calculationsConfig = new MapperConfiguration(c =>
+            {
+                c.AddProfile<CalculationsMappingProfile>();
+                c.AddProfile<FDSDatasetsMappingProfile>();
+            });
+
+            builder
+                .AddSingleton(calculationsConfig.CreateMapper());
+
+            builder.AddScoped<IReIndexGraphRepository, ReIndexGraphRepository>();
+            builder.AddScoped<ISpecificationCalculationAnalysis, SpecificationCalculationAnalysis>();
+            builder.AddScoped<IReIndexSpecificationCalculationRelationships, ReIndexSpecificationCalculationRelationships>();
+            builder.AddScoped<ICalculationAnalysis, CalculationAnalysis>();
+
+            builder
+               .AddScoped<IDatasetDefinitionFieldChangesProcessor, DatasetDefinitionFieldChangesProcessor>();
+
+            builder.AddScoped<ICalculationEngineRunningChecker, CalculationEngineRunningChecker>();
+
+            builder.AddScoped<IValidator<CalculationCreateModel>, CalculationCreateModelValidator>();
+
+            builder.AddScoped<IApproveAllCalculationsService, ApproveAllCalculationsService>();
+
+            builder
+               .AddScoped<IDatasetReferenceService, DatasetReferenceService>();
+
+            builder
+              .AddScoped<IValidator<CalculationEditModel>, CalculationEditModelValidator>();
+            
+            builder.AddSingleton<ISourceFileRepository, SourceFileRepository>(ctx =>
+            {
+                BlobStorageOptions blobStorageOptions = new BlobStorageOptions();
+
+                config.Bind("AzureStorageSettings", blobStorageOptions);
+
+                blobStorageOptions.ContainerName = "source";
+
+                IBlobContainerRepository blobContainerRepository = new BlobContainerRepository(blobStorageOptions);
+                return new SourceFileRepository(blobContainerRepository);
+            });
+
+            if (useSqlDb)
+            {
+                builder.AddScoped<IVersionRepository<CalculationVersion>, CalculationVersionsRepository<CalculationVersion>>();
+            }
+            else
+            {
+                builder.AddSingleton<IVersionRepository<CalculationVersion>, VersionRepository<CalculationVersion>>((ctx) =>
+            {
+                CosmosDbSettings calcsVersioningDbSettings = new CosmosDbSettings();
+
+                config.Bind("CosmosDbSettings", calcsVersioningDbSettings);
+
+                calcsVersioningDbSettings.ContainerName = "calcs";
+
+                CosmosRepository resultsRepostory = new CosmosRepository(calcsVersioningDbSettings);
+
+                return new VersionRepository<CalculationVersion>(resultsRepostory, new NewVersionBuilderFactory<CalculationVersion>());
+            });
+            }
+
+            builder.AddFeatureToggling(config);
+
+            builder.AddSearch(config);
+            builder
+                .AddScoped<ISearchRepository<CalculationIndex>, SearchRepository<CalculationIndex>>();
+            builder
+                .AddScoped<ISearchRepository<ProviderCalculationResultsIndex>, SearchRepository<ProviderCalculationResultsIndex>>();
+
+            builder.AddServiceBus(config, "calcs");
+            builder.AddScoped<ICalculationsFeatureFlag, CalculationsFeatureFlag>();
+            builder.AddScoped<IGraphRepository, GraphRepository>();
+
+            builder.AddScoped<IUserProfileProvider, UserProfileProvider>();
+
+            builder.AddProvidersInterServiceClient(config, handlerLifetime: Timeout.InfiniteTimeSpan);
+            builder.AddSpecificationsInterServiceClient(config, handlerLifetime: Timeout.InfiniteTimeSpan);
+            builder.AddDatasetsInterServiceClient(config);
+            builder.AddJobsInterServiceClient(config, handlerLifetime: Timeout.InfiniteTimeSpan);
+            builder.AddGraphInterServiceClient(config, handlerLifetime: Timeout.InfiniteTimeSpan);
+            builder.AddPoliciesInterServiceClient(config, handlerLifetime: Timeout.InfiniteTimeSpan);
+            builder.AddResultsInterServiceClient(config, handlerLifetime: Timeout.InfiniteTimeSpan);
+            builder.AddCalcEngineInterServiceClient(config, handlerLifetime: Timeout.InfiniteTimeSpan);
+            builder.AddFdsInterServiceClient(config, handlerLifetime: Timeout.InfiniteTimeSpan);
+
+            builder.AddCaching(config);
+
+            builder.AddEngineSettings(config);
+
+            builder.AddApplicationInsightsTelemetryClient(config, "CalculateFunding.Functions.Calcs");
+            builder.AddApplicationInsightsServiceName(config, "CalculateFunding.Functions.Calcs");
+            builder.AddLogging("CalculateFunding.Functions.Calcs");
+            builder.AddTelemetry();
+
+            PolicySettings policySettings = ServiceCollectionExtensions.GetPolicySettings(config);
+            AsyncBulkheadPolicy totalNetworkRequestsPolicy = ResiliencePolicyHelpers.GenerateTotalNetworkRequestsPolicy(policySettings);
+
+            ResiliencePolicies resiliencePolicies = CreateResiliencePolicies(totalNetworkRequestsPolicy);
+
+            builder.AddSingleton<ICalcsResiliencePolicies>(resiliencePolicies);
+            builder.AddSingleton<IJobManagementResiliencePolicies>((ctx) => new JobManagementResiliencePolicies()
+            {
+                JobsApiClient = resiliencePolicies.JobsApiClient,
+            });
+
+            builder.AddScoped<ICodeContextCache, CodeContextCache>()
+                .AddScoped<ICodeContextBuilder, CodeContextBuilder>();
+
+            return builder.BuildServiceProvider();
+        }
+
+        private static ResiliencePolicies CreateResiliencePolicies(AsyncPolicy totalNetworkRequestsPolicy)
+        {
+            return new ResiliencePolicies
+            {
+                CalculationsRepository = CosmosResiliencePolicyHelper.GenerateCosmosPolicy(totalNetworkRequestsPolicy),
+                CalculationsRepositoryNoOCCRetry = CosmosResiliencePolicyHelper.GenerateCosmosPolicyWithNoOCCRetry(totalNetworkRequestsPolicy),
+                CalculationsSearchRepository = SearchResiliencePolicyHelper.GenerateSearchPolicy(totalNetworkRequestsPolicy),
+                CacheProviderPolicy = ResiliencePolicyHelpers.GenerateRedisPolicy(totalNetworkRequestsPolicy),
+                CalculationsVersionsRepositoryPolicy = CosmosResiliencePolicyHelper.GenerateCosmosPolicy(totalNetworkRequestsPolicy),
+                SpecificationsRepositoryPolicy = ResiliencePolicyHelpers.GenerateRestRepositoryPolicy(totalNetworkRequestsPolicy),
+                BuildProjectRepositoryPolicy = CosmosResiliencePolicyHelper.GenerateCosmosPolicy(totalNetworkRequestsPolicy),
+                MessagePolicy = ResiliencePolicyHelpers.GenerateMessagingPolicy(totalNetworkRequestsPolicy),
+                JobsApiClient = ResiliencePolicyHelpers.GenerateRestRepositoryPolicy(totalNetworkRequestsPolicy),
+                ProvidersApiClient = ResiliencePolicyHelpers.GenerateRestRepositoryPolicy(totalNetworkRequestsPolicy),
+                SpecificationsApiClient = ResiliencePolicyHelpers.GenerateRestRepositoryPolicy(totalNetworkRequestsPolicy),
+                SourceFilesRepository = ResiliencePolicyHelpers.GenerateRestRepositoryPolicy(totalNetworkRequestsPolicy),
+                DatasetsApiClient = ResiliencePolicyHelpers.GenerateRestRepositoryPolicy(totalNetworkRequestsPolicy),
+                PoliciesApiClient = ResiliencePolicyHelpers.GenerateRestRepositoryPolicy(totalNetworkRequestsPolicy),
+                GraphApiClientPolicy = ResiliencePolicyHelpers.GenerateRestRepositoryPolicy(totalNetworkRequestsPolicy),
+                ResultsApiClient = ResiliencePolicyHelpers.GenerateRestRepositoryPolicy(totalNetworkRequestsPolicy),
+                CalcEngineApiClient = ResiliencePolicyHelpers.GenerateRestRepositoryPolicy(totalNetworkRequestsPolicy),
+                FDSApiClientPolicy = ResiliencePolicyHelpers.GenerateRestRepositoryPolicy(totalNetworkRequestsPolicy),
+            };
+        }
+    }
+}

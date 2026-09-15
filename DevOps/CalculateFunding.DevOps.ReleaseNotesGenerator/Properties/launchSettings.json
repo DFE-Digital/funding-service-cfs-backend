@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "CalculateFunding.DevOps.ReleaseNotesGenerator": {
+      "commandName": "Project"
+    }
+  }
+}

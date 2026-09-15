@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <DebugType>full</DebugType>
+    <LangVersion>12.0</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    
+    
+    <PackageReference Include="CalculateFunding.Common.ApiClient.Datasets" Version="9.0.2" />
+    <PackageReference Include="CalculateFunding.Common.ApiClient.Results" Version="8.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Calcs" Version="7.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Jobs" Version="6.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Providers" Version="6.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Results" Version="7.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Specifications" Version="5.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Storage" Version="4.0.0" />
+    <PackageReference Include="CalculateFunding.Generators.Funding" Version="6.0.1" />
+    
+    
+    
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CalculateFunding.Models.Calcs\CalculateFunding.Models.Calcs.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Repositories.Common.EFCore\CalculateFunding.Repositories.Common.EFCore.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.CodeGeneration.VisualBasic.Type\CalculateFunding.Services.CodeGeneration.VisualBasic.Type.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.CodeGeneration.VisualBasic\CalculateFunding.Services.CodeGeneration.VisualBasic.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.CodeMetadataGenerator\CalculateFunding.Services.CodeMetadataGenerator.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Core\CalculateFunding.Services.Core.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Processing\CalculateFunding.Services.Processing.csproj" />
+  </ItemGroup>
+</Project>
+

@@ -1,0 +1,125 @@
+﻿using System;
+using CalculateFunding.Common.Utility;
+using CalculateFunding.Services.Core.Caching.FileSystem;
+using CalculateFunding.Services.Core.Constants;
+using CalculateFunding.Services.Core.Extensions;
+using CalculateFunding.Services.Core.Interfaces;
+using CalculateFunding.Services.Publishing.Interfaces;
+using Serilog;
+using System.Collections.Generic;
+using System.Dynamic;
+using System.Threading.Tasks;
+using System.Linq;
+using CalculateFunding.Common.CosmosDb;
+using CalculateFunding.Models.Publishing;
+using CalculateFunding.Services.Publishing.Reporting.FundingLines;
+using CalculateFunding.Common.Storage;
+using CalculateFunding.Common.JobManagement;
+using CalculateFunding.Services.Core;
+using Azure.Messaging.ServiceBus;
+
+namespace CalculateFunding.Services.Publishing.Reporting.PublishedProviderEstate
+{
+    public class PublishedProviderEstateCsvGenerator : BasePublishingCsvGenerator
+    {
+        public const int BatchSize = 1000;
+
+        private readonly IPublishedFundingRepository _publishedFundingRepository;
+
+        protected override string JobDefinitionName => JobConstants.DefinitionNames.GeneratePublishedProviderEstateCsvJob;
+
+        public PublishedProviderEstateCsvGenerator(
+            IJobManagement jobManagement,
+            IFileSystemAccess fileSystemAccess,
+            IFileSystemCacheSettings fileSystemCacheSettings,
+            IBlobClient blobClient,
+            IPublishedFundingRepository publishedFundingRepository,
+            ICsvUtils csvUtils,
+            ILogger logger,
+            IPublishedProviderCsvTransformServiceLocator publishedProviderCsvTransformServiceLocator,
+            IPublishingResiliencePolicies policies)
+            : base(jobManagement, fileSystemAccess, blobClient, policies, csvUtils, logger, fileSystemCacheSettings, publishedProviderCsvTransformServiceLocator)
+        {
+            Guard.ArgumentNotNull(publishedFundingRepository, nameof(publishedFundingRepository));
+
+            _publishedFundingRepository = publishedFundingRepository;
+        }
+
+        protected override async Task<bool> GenerateCsv(ServiceBusReceivedMessage message,
+            string temporaryFilePath,
+            IPublishedProviderCsvTransform publishedProviderCsvTransform)
+        {
+            bool outputHeaders = true;
+            bool processedResults = false;
+
+            string specificationId = message.GetUserProperty<string>("specification-id");
+            
+            using ICosmosDbFeedIterator documents = _publishedFundingRepository.GetRefreshedProviderVersionBatchProcessing(specificationId,
+                BatchSize);
+
+            if (documents == null)
+            {
+                throw new NonRetriableException(
+                    $"Unable to generate CSV for PublishedProviderEstateCsvGenerator for specification {specificationId}. Failed to get feed iterator from cosmos");
+            }
+
+            while (documents.HasMoreResults)
+            {
+                IEnumerable<PublishedProviderVersion> publishedProviderVersions = await documents.ReadNext<PublishedProviderVersion>();
+                
+                List<IGrouping<string, PublishedProviderVersion>> providerVersionGroups = publishedProviderVersions.GroupBy(v => v.ProviderId).ToList();
+
+                GenerateGroupedPublishedProviderEstateCsv(providerVersionGroups, publishedProviderCsvTransform, temporaryFilePath, outputHeaders);
+
+                outputHeaders = false;
+                processedResults = true;                    
+            }
+
+            return processedResults;
+        }
+
+        protected override string GetContentDisposition(ServiceBusReceivedMessage message)
+        {
+            return $"attachment; filename={GetPrettyFileName(message)}";
+        }
+
+        private void GenerateGroupedPublishedProviderEstateCsv(
+            IEnumerable<IGrouping<string, PublishedProviderVersion>> providerVersionGroup,
+            IPublishedProviderCsvTransform publishedProviderCsvTransform,
+            string temporaryFilePath,
+            bool outputHeaders)
+        {
+            IEnumerable<ExpandoObject> csvRows = publishedProviderCsvTransform.Transform(providerVersionGroup);
+            AppendCsvFragment(temporaryFilePath, csvRows, outputHeaders);
+        }
+
+        protected override string GetCsvFileName(ServiceBusReceivedMessage message)
+        {
+            string specificationId = message.GetUserProperty<string>("specification-id");
+            string fundingPeriodId = message.GetUserProperty<string>("funding-period-id");
+
+            return $"funding-lines-{specificationId}-{FundingLineCsvGeneratorJobType.HistoryPublishedProviderEstate}-{fundingPeriodId}.csv";
+        }
+
+        protected override IDictionary<string, string> GetMetadata(ServiceBusReceivedMessage message)
+        {
+            return new Dictionary<string, string>
+            {
+                { "specification-id", message.GetUserProperty<string>("specification-id") },
+                { "funding-stream-id", message.GetUserProperty<string>("funding-stream-id") },
+                { "funding-period-id", message.GetUserProperty<string>("funding-period-id") },
+                { "jobId", message.GetUserProperty<string>("jobId") },
+                { "job-type", message.GetUserProperty<string>("job-type") },
+                { "file-name", GetPrettyFileName(message) }
+            };
+        }
+
+        private string GetPrettyFileName(ServiceBusReceivedMessage message)
+        {
+            string fundingStreamId = message.GetUserProperty<string>("funding-stream-id");
+            string fundingPeriodId = message.GetUserProperty<string>("funding-period-id");
+
+            return $"{fundingStreamId} {fundingPeriodId} Provider Estate Variations {DateTimeOffset.UtcNow:s}.csv";
+        }
+    }
+}

@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CalculateFunding.Common.Models" Version="4.0.0" />
+    <PackageReference Include="Microsoft.Azure.Search" Version="10.1.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CalculateFunding.Models.Datasets\CalculateFunding.Models.Datasets.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Models.ProviderLegacy\CalculateFunding.Models.ProviderLegacy.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Models.Search\CalculateFunding.Models.Search.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Models.Versioning\CalculateFunding.Models.Versioning.csproj" />
+  </ItemGroup>
+</Project>

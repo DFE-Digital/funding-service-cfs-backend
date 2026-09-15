@@ -1,0 +1,141 @@
+using System.Collections.Generic;
+using System.Linq;
+using CalculateFunding.Services.Core.Extensions;
+using CalculateFunding.Services.Profiling.Models;
+using CalculateFunding.Services.Profiling.ReProfilingStrategies;
+using CalculateFunding.Tests.Common.Helpers;
+using FluentAssertions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NSubstitute;
+using Serilog;
+
+namespace CalculateFunding.Services.Profiling.Tests.ReProfilingStrategies
+{
+    [TestClass]
+    public class ReProfileDsgFundingLineTests : ReProfilingStrategyTest
+    {
+        private ILogger _logger;
+        [TestInitialize]
+        public void SetUp()
+        {
+            ReProfiling = new ReProfileDsgFundingLine(_logger ?? CreateLogger());
+        }
+
+        private static ILogger CreateLogger()
+        {
+            return Substitute.For<ILogger>();
+        }
+
+        [TestMethod]
+        public void NoTotalAllocationChangeWithPreviousReleasedFundingDefect()
+        {
+            ExistingProfilePeriod[] releasedProfilePeriods = GetProfilePeriods<ExistingProfilePeriod>("existing");
+            DeliveryProfilePeriod[] newProfiledProfilePeriods = GetProfilePeriods<DeliveryProfilePeriod>("delivery");
+
+            GivenTheLatestProfiling(newProfiledProfilePeriods);
+            AndTheExistingProfilePeriods(releasedProfilePeriods);
+
+            WhenTheFundingLineIsReProfiled();
+
+            decimal adjustedTotal = newProfiledProfilePeriods.Sum(_ => _.GetProfileValue());
+
+            adjustedTotal
+                .Should()
+                .Be(57170720M);//total allocation should not be altered
+        }
+
+        [TestMethod]
+        [DynamicData(nameof(OverAndUnderPaymentExamples), DynamicDataSourceType.Method)]
+        public void BundlesUnderAndOverPaymentsAcrossTheFundingLinePeriodsAndCarriesOverRemainingOverPayments(int variationPointerIndex,
+            decimal[] originalPeriodValues,
+            decimal[] newTheoreticalPeriodValues,
+            decimal totalAllocation,
+            decimal previousTotalAllocation,
+            decimal[] expectedAdjustedPeriodValues,
+            decimal? expectedRemainingOverPayment)
+        {
+            GivenTheLatestProfiling(AsLatestProfiling(newTheoreticalPeriodValues));
+            AndTheExistingProfilePeriods(AsExistingProfilePeriods(originalPeriodValues.Take(variationPointerIndex).ToArray()));
+            AndThePreviousFundingTotal(previousTotalAllocation);
+            AndTheLatestFundingTotal(totalAllocation);
+            
+            WhenTheFundingLineIsReProfiled();
+            
+            AndTheFundingLinePeriodAmountsShouldBe(expectedAdjustedPeriodValues);
+            AndTheCarryOverShouldBe(expectedRemainingOverPayment);
+        }
+
+        private static T[] GetProfilePeriods<T>(string file)
+            => typeof(ReProfileDsgFundingLineTests)
+                .Assembly
+                .GetEmbeddedResourceFileContents($"CalculateFunding.Services.Profiling.Tests.Resources.{file}.json")
+                .AsPoco<T[]>();
+
+        private static IEnumerable<object[]> OverAndUnderPaymentExamples()
+        {
+            //for defect 54331 - case with no change is incorrectly adjusting as an underpayment
+            yield return new object []
+            {
+                16, 
+                NewDecimals(3760098,3760098,3760098,3760098,3760098,3760098,3760098,3760098,2279346,3595570,3595570,3595570,3595570,3595570,3595570,3595570,3214770,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573182),
+                NewDecimals(3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573182),
+                89329262M,
+                89329262M,
+                NewDecimals(3760098,3760098,3760098,3760098,3760098,3760098,3760098,3760098,2279346,3595570,3595570,3595570,3595570,3595570,3595570,3595570,3214770,3573170,3573170,3573170,3573170,3573170,3573170,3573170,3573182),
+                (decimal?)null
+            };
+            yield return new object []
+            {
+                3, 
+                NewDecimals(1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000),
+                NewDecimals(1100, 1100, 1100, 1100, 1100, 1100, 1100, 1100, 1100, 1100),
+                11000M,
+                10000M,
+                NewDecimals(1000, 1000, 1000, 1400, 1100, 1100, 1100, 1100, 1100, 1100),
+                null
+            };
+            yield return new object []
+            {
+                6, 
+                NewDecimals(1000, 1000, 1000, 1400, 1100, 1100, 1100, 1100, 1100, 1100),
+                NewDecimals(950, 950, 950, 950, 950, 950, 950, 950, 950, 950),
+                9500M,
+                11000M,
+                NewDecimals(1000, 1000, 1000, 1400, 1100, 1100, 50, 950, 950, 950),
+                null
+            };
+            yield return new object []
+            {
+                9, 
+                NewDecimals(1000, 1000, 1000, 1400, 1100, 1100, 50, 950, 950, 950),
+                NewDecimals(800, 800, 800, 800, 800, 800, 800, 800, 800, 800),
+                8000M,
+                9500M,
+                NewDecimals(1000, 1000, 1000, 1400, 1100, 1100, 50, 950, 950, 0),
+                550M
+            };
+            //example from robs xls
+            yield return new object []
+            {
+                7, 
+                NewDecimals(9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074,9448074, 9448074, 9448074, 94480741),
+                NewDecimals(9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661,9222661, 9222661, 9222661, 9222675),
+                230566539M,
+                236566539M,
+                NewDecimals(9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 7644770, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661,9222661, 9222661, 9222661, 9222675),
+                null
+            };
+            //same as Robs example but now the variation pointer puts us on the final profile period  
+            yield return new object []
+            {
+                24, 
+                NewDecimals(9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074,9448074, 9448074, 9448074, 94480741),
+                NewDecimals(9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661, 9222661,9222661, 9222661, 9222661, 9222675),
+                230566539M,
+                236566539M,
+                NewDecimals(9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074, 9448074,9448074, 9448074, 9448074, 3812763),
+                null
+            };
+        }
+    }
+}

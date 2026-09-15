@@ -1,0 +1,58 @@
+{
+  "name": "publishedfundingindexer",
+  "dataSourceName": "publishedfundingdatasource",
+  "targetIndexName": "publishedfundingindex",
+  "schedule": { "interval": "PT2H" },
+  "fieldMappings": [
+    {
+      "sourceFieldName": "/funding/id",
+      "targetFieldName": "id"
+    },
+    {
+      "sourceFieldName": "/funding/statusChangedDate",
+      "targetFieldName": "statusChangedDate" 
+    },
+    {
+      "sourceFieldName": "/funding/fundingStream/code",
+      "targetFieldName": "fundingStreamId"
+    },
+    {
+      "sourceFieldName": "/funding/fundingPeriod/id",
+      "targetFieldName": "fundingPeriodId"
+    },
+    {
+      "sourceFieldName": "/funding/groupingReason",
+      "targetFieldName": "groupingType"
+    },
+    {
+      "sourceFieldName": "/funding/organisationGroup/groupTypeIdentifier",
+      "targetFieldName": "groupTypeIdentifier"
+    },
+    {
+      "sourceFieldName": "/funding/organisationGroup/identifierValue",
+      "targetFieldName": "identifierValue"
+    },
+    {
+      "sourceFieldName": "/funding/fundingVersion",
+      "targetFieldName": "version"
+    },
+    {
+      "sourceFieldName": "metadata_storage_path",
+      "targetFieldName": "documentPath"
+    },
+    {
+      "sourceFieldName": "/deleted",
+      "targetFieldName": "deleted"
+    },
+    {
+      "sourceFieldName": "/funding/variationReasons",
+      "targetFieldName": "variationReasons"
+    }
+  ],
+  "parameters": {
+    "configuration": {
+      "parsingMode": "json",
+      "executionEnvironment": "private"
+    }
+  }
+}

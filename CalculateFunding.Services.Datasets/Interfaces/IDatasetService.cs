@@ -1,0 +1,61 @@
+﻿using System.Threading.Tasks;
+using Azure.Messaging.ServiceBus;
+using CalculateFunding.Common.Models;
+using CalculateFunding.Models.Datasets;
+using CalculateFunding.Models.Datasets.ViewModels;
+using CalculateFunding.Services.Processing.Interfaces;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+
+namespace CalculateFunding.Services.Datasets.Interfaces
+{
+    public interface IDatasetService : IJobProcessingService
+    {
+        Task<IActionResult> CreateNewDataset(CreateNewDatasetModel model, Reference author);
+
+        Task<IActionResult> DatasetVersionUpdate(DatasetVersionUpdateModel model, Reference author);
+
+        Task<IActionResult> DatasetVersionUpdateAndPersist(DatasetVersionUpdateModel model, Reference author);
+
+        Task<IActionResult> GetDatasetByDatasetId(string datasetId);
+
+        Task<IActionResult> GetDatasetByName(HttpRequest request);
+
+        Task<IActionResult> GetCurrentDatasetVersionByDatasetId(string datasetId);
+
+        Task<IActionResult> ValidateDataset(GetDatasetBlobModel getDatasetBlobModel, Reference user, string correlationId);
+
+        Task<IActionResult> GetDatasetsByDefinitionId(string definitionId);
+
+        Task<IActionResult> DownloadDatasetFile(string datasetId, string datasetVersion);
+        
+        Task<IActionResult> DownloadOriginalDatasetUploadFile(string datasetId, string datasetVersion);
+
+        Task<IActionResult> UploadDatasetFileRaw(string filename, DatasetMetadataViewModelRaw model);
+
+        Task<IActionResult> UploadDatasetFile(string filename, DatasetMetadataViewModel model);
+
+        Task<IActionResult> Reindex();
+
+	    Task<IActionResult> ReindexDatasetVersions();
+
+        Task<IActionResult> RegenerateProviderSourceDatasets(string specificationId, Reference user, string correlationId);
+
+        Task<IActionResult> GetValidateDatasetStatus(string operationId);
+
+        Task UpdateDatasetAndVersionDefinitionName(Reference datsetDefinitionReference);
+
+        Task DeleteDatasets(ServiceBusReceivedMessage message);
+
+        Task<IActionResult> QueueProcessDatasetObsoleteItemsJob(string specificationId, Reference author, string correlationId);
+
+        Task ProcessDatasetObsoleteItems(ServiceBusReceivedMessage message);
+
+        IActionResult GetValidateDatasetValidationErrorSasUrl(DatasetValidationErrorRequestModel requestModel);
+
+        Task<IActionResult> FixupDatasetsFundingStream();
+
+        Task<IActionResult> MigrateDatasetsPerDocumentVersioning();
+        Task<IActionResult> CreateAndPersistNewDataset(CreateNewDatasetModel createNewDatasetModel, Reference user);
+    }
+}

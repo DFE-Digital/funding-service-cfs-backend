@@ -1,0 +1,51 @@
+﻿using CalculateFunding.Common.Models;
+using CalculateFunding.Generators.OrganisationGroup.Models;
+using CalculateFunding.Services.Publishing.FundingManagement.Interfaces;
+using CalculateFunding.Services.Publishing.FundingManagement.SqlModels;
+using System;
+using System.Collections.Generic;
+
+namespace CalculateFunding.Services.Publishing.FundingManagement.ReleaseManagement
+{
+    /// <summary>
+    /// Scoped class to store mappings of entities to SQL
+    /// </summary>
+    public class ReleaseToChannelSqlMappingContext : IReleaseToChannelSqlMappingContext
+    {
+        public ReleaseToChannelSqlMappingContext()
+        {
+            ReleasedProviders = new Dictionary<string, ReleasedProvider>();
+            ReleasedProviderVersions = new Dictionary<string, ReleasedProviderVersion>();
+            ReleasedProviderVersionChannels = new Dictionary<string, Guid>();
+            FundingGroups = new Dictionary<int, Dictionary<OrganisationGroupResult, Guid>>();
+            FundingGroupVersions = new Dictionary<int, Dictionary<string, FundingGroupVersion>>();
+        }
+
+        public Dictionary<string, ReleasedProvider> ReleasedProviders { get; }
+
+        public Dictionary<string, ReleasedProviderVersion> ReleasedProviderVersions { get; }
+
+        public Dictionary<string, Guid> ReleasedProviderVersionChannels { get; }
+
+        public Specification Specification { get; set; }
+
+        public Dictionary<int, Dictionary<OrganisationGroupResult, Guid>> FundingGroups { get; set; }
+
+        public Dictionary<int, Dictionary<string, FundingGroupVersion>> FundingGroupVersions { get; set; }
+
+        /// <summary>
+        /// The job id of the release job
+        /// </summary>
+        public string JobId { get; set; }
+
+        /// <summary>
+        /// Correlation id for the release job
+        /// </summary>
+        public string CorrelationId { get; set; }
+
+        /// <summary>
+        /// The user that initiated the release job
+        /// </summary>
+        public Reference Author { get; set; }
+    }
+}

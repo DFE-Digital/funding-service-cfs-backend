@@ -1,0 +1,205 @@
+name: $(Rev:r)
+
+trigger:
+  branches:
+    include:
+      - master
+      - providers
+      - fdps
+      - releases/*
+  
+  paths:
+    include:
+      - CalculateFunding.Services.Core
+      - CalculateFunding.Services.Core.AspNet
+      - CalculateFunding.Services.Graph
+      - CalculateFunding.Models.Users
+      - CalculateFunding.Repositories.Common.Search
+      - CalculateFunding.Api.Graph
+      - CalculateFunding.Api.Graph.UnitTests
+
+pool:
+  vmImage: ubuntu-latest
+
+resources:
+  repositories:
+    - repository: self
+    
+variables:
+  - name: ProjectName
+    value: Graph
+
+  - name: ServiceName
+    value: Graph
+
+  - name: templateName
+    value: graph
+
+  - name: releaseconfiguration
+    value: Release
+
+  - name: DOTNET_SKIP_FIRST_TIME_EXPERIENCE
+    value: true
+  - name: DOTNET_CLI_TELEMETRY_OPTOUT
+    value: true
+  - name: BuildApi
+    value: true
+  - name: BuildFunction
+    value: false
+  - name: SecureSmokeTest
+    value: false
+
+  # Docker / ACR
+  - name: acrName
+    value: cfsdevsharedacr
+  - name: acrLoginServer
+    value: cfsdevsharedacr.azurecr.io
+  - name: dockerRegistryServiceConnection
+    value: CFS-DEV-ACR
+  - name: imageTag
+    value: $(Build.BuildId)
+  - name: patToken
+    value: $(System.AccessToken)
+
+  # Variable Groups
+  - group: Dotnet Core SDK Version
+  - group: Azure Settings Integration-v2
+  - group: Integration Tests Info - Integration-PR
+  - group: Integration Tests KV - Integration-PR
+  - group: Shared Infrastructure - Integration - v2
+  - group: Resource Tags test-v2 integration-v2
+  - group: Feature Toggles Integration-v2
+
+# ==================================================
+# STAGE 1 - BUILD & PUSH DOCKER IMAGES
+# ==================================================
+stages:
+  - stage: Build  
+    displayName: Build and Push Images
+
+    jobs:
+      - job: DockerBuild
+        displayName: Build Docker Images
+        condition: succeeded()
+        
+        steps:
+          - task: Docker@2
+            displayName: Build API Image
+            condition: eq(variables['BuildApi'], 'true')
+            inputs:
+              command: build
+              containerRegistry: $(dockerRegistryServiceConnection)
+              repository: graph-api              
+              Dockerfile: $(Build.SourcesDirectory)/CalculateFunding.Api.Graph/Dockerfile
+              buildContext: $(Build.SourcesDirectory)
+              arguments: > 
+               --build-arg FEED_PAT=$(patToken)
+              tags: |
+                $(imageTag)
+                latest
+
+          - task: Docker@2
+            displayName: Push API Image
+            condition: eq(variables['BuildApi'], 'true')
+            inputs:
+              command: push
+              containerRegistry: $(dockerRegistryServiceConnection)
+              repository: graph-api
+              tags: |
+                $(imageTag)
+                latest
+
+  # ==================================================
+  # STAGE 2 - PR INFRA + DEPLOY
+  # ==================================================
+  - stage: PR_Infra
+    displayName: Deploy PR Infrastructure
+    dependsOn: Build
+    condition: succeeded()
+
+    jobs:
+      - job: DeployInfra
+        
+        steps: 
+          - template: templates\standard-service-arm-deploy-linux.yml
+            parameters:
+              ServiceName: ${{ variables.ServiceName }}
+              templateName: ${{ variables.templateName }}
+              ResourceGroup: $(ResourceGroup)
+              azureSubscription: $(azureSubscription)
+              overrideParameters: '-environmentKey "$(EnvironmentKey)" -productVersion "pr" -appServiceLogRetentionDays "0" -sendWebLogsToStorage "false" -apiHostingPlanName "$(apiHostingPlanNamePR)" -keyVaultName "$(keyVaultNamePR)" -sharedLogStorageName "$(sharedLogStorageName)" -graphAccountName "$(graphAccountName)" -graphDbName "$(graphDatabaseName)" -environmentTag "$(environmentTag)" -parentBusinessTag "$(parentBusinessTag)" -portfolioTag "$(portfolioTag)" -productTag "$(productTag)" -serviceLineTag "$(serviceLineTag)" -Http5xxTH "100" -Http401TH "100" -HttpResponseTimeTH "100" -applicationInsightsName "$(applicationInsightsName)" -logAnalyticsWorkspaceName "$(logAnalyticsWorkspaceName)" -dfeT1VNetResourceGroupName "$(dfeT1VNetResourceGroupName)" -dfeT1VirtualNetworkName "$(dfeT1VirtualNetworkName)" -appSrvSubnetName "$(appSrvSubnetNamePR)" -intGraphAStoVNet "true" -funcsSubnetName "$(funcsSubnetNamePR)" -calcEngineFASubnetName "$(calcEngineFASubnetNamePR)" -ipSecurityRestrictionsEnabled "false"'
+          
+          - template: templates\standard-service-pr-ci-build-prinfra-linux.yml
+            parameters:
+               ProjectName: ${{ variables.ProjectName }}
+               ServiceName: ${{ variables.ServiceName }} 
+               DotnetCoreSdkVersion: $(DotnetCoreSdkVersionNet8)
+               ApiFrameworkVersion: 'net8.0'
+               ResourceGroup: $(ResourceGroup)
+               ServiceBusSettings: $(ServiceBusSettingsPR)
+               azureSubscription: '$(azureSubscription)'
+               environmentKey: $(EnvironmentKey)
+               BuildApi: ${{ variables.BuildApi }}
+               BuildFunction: ${{ variables.BuildFunction }}
+               SecureSmokeTest: ${{ variables.SecureSmokeTest }}
+               APIKey: $(svcapigraph)
+
+  # ==================================================
+  # STAGE 3 - INTEGRATION TESTS
+  # ==================================================
+  - stage: IntegrationTests
+    displayName: Run Integration Tests
+    dependsOn: PR_Infra
+    condition: and(
+      succeeded(),
+      eq(variables['Build.Reason'], 'PullRequest'),
+      eq(variables['runIntegrationTests'], 'true'))
+
+    jobs:
+      - job: RunTests
+        steps:
+          - task: DotNetCoreCLI@2
+            displayName: Restore Integration Test Projects
+            inputs:
+              command: restore
+              projects: |
+                **/*Api.${{ variables.ProjectName }}.IntegrationTests/*.csproj
+              feedsToUse: select
+              vstsFeed: 'ecf37bc0-472b-47bf-91e3-6774809fd194'
+
+          
+          - task: DotNetCoreCLI@2
+            displayName: dotnet test for Integration tests
+            condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'), eq(variables['runIntegrationTests'], 'true'))
+            inputs:
+              command: test
+              projects: |
+                **/*Api.${{ variables.ProjectName }}.IntegrationTests/*.csproj
+              arguments: '--configuration Release /p:AssemblyVersion=$(Build.BuildNumber)'
+            env:
+              AzureConfiguration__ConnectionString: $(AzureConfigurationConnectionString)
+              AzureStorageSettings__ConnectionString: $(AzureStorageSettings)
+              CommonStorageSettings__ConnectionString: $(AzureStorageSettings)
+              RedisSettings__CacheConnection: $(RedisSettings)
+              ResourceGroup: $(ResourceGroup)
+              ServiceBusSettings__ConnectionString: $(ServiceBusSettingsPR)
+              storageConfiguration__ConnectionString: $(AzureStorageSettings)
+              WEBSITE_HTTPLOGGING_CONTAINER_URL: $(WEBSITE_HTTPLOGGING_CONTAINER_URL)
+              apiKeyMiddleware__apiKey: $(svcapigraph)
+              cfsClient__ApiEndpoint: $(cfsClientApiEndpoint)
+              graphClient__ApiEndpoint: $(graphClientApiEndpoint)
+              graphClient__ApiKey: $(svcapigraph)
+              CosmosGraphSettings__ApiKey: $(graphCosmosDbSettingsAuthKey)
+              CosmosGraphSettings__ContainerPath: '/dbs/cfs-t1in-gph-db/colls/specs'
+              CosmosGraphSettings__EndPointUrl: $(CosmosGraphSettingsEndPointUrl)
+              CosmosGraphSettings__Port: '443'
+          
+                 
+          - task: AzureCLI@2
+            condition: and(failed(), eq(variables['Build.Reason'], 'PullRequest'))
+            displayName: Reset in-progress swap on failure
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: pscore
+              scriptLocation: inlineScript
+              inlineScript: 'az webapp deployment slot swap --action reset --slot Staging --name app-$(EnvironmentKey)-${{ variables.ServiceName }}-pr --resource-group $(ResourceGroup)'

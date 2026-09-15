@@ -1,0 +1,125 @@
+using Azure.Messaging.ServiceBus;
+using CalculateFunding.Common.Models;
+using CalculateFunding.Common.ServiceBus.Interfaces;
+using CalculateFunding.Functions.Specs.ServiceBus;
+using CalculateFunding.Services.Core.Constants;
+using CalculateFunding.Services.Specs.Interfaces;
+using CalculateFunding.Tests.Common;
+using CalculateFunding.Tests.Common.Helpers;
+using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
+using NSubstitute;
+using Serilog;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace CalculateFunding.Functions.Specs.SmokeTests
+{
+    [TestClass]
+    public class SpecificationsFunctions : SmokeTestBase
+    {
+        private static ISpecificationsService _specificationsService;
+        private static ISpecificationIndexingService _specificationIndexerService;
+        private static ILogger _logger;
+        private static IUserProfileProvider _userProfileProvider;
+        private static IObsoleteFundingLineAndEnumDetection _obsoleteFundingLineAndEnumDetection;
+
+        [ClassInitialize]
+        public static void SetupTests(TestContext tc)
+        {
+            SetupTests("specs");
+
+            _logger = CreateLogger();
+
+            _specificationsService = CreateSpecificationService();
+            _userProfileProvider = CreateUserProfileProvider();
+            _specificationIndexerService = CreateSpecificationIndexerService();
+            _obsoleteFundingLineAndEnumDetection = CreateObsoleteFundingLineAndEnumDetection();
+        }
+
+        [TestMethod]
+        public async Task OnDetectObsoleteFundingLines_SmokeTestSucceeds()
+        {
+            OnDetectObsoleteFundingLines onDetectObsoleteFundingLines = new OnDetectObsoleteFundingLines(_logger,
+                _obsoleteFundingLineAndEnumDetection,
+                Services.BuildServiceProvider().GetRequiredService<IMessengerService>(),
+                _userProfileProvider,
+                AppConfigurationHelper.CreateConfigurationRefresherProvider(),
+                IsDevelopment);
+
+            SmokeResponse response = await RunSmokeTest(ServiceBusConstants.QueueNames.DetectObsoleteFundingLines,
+                async(ServiceBusReceivedMessage smokeResponse) => await onDetectObsoleteFundingLines.Run(JsonConvert.DeserializeObject<ServiceBusReceivedMessage>(Encoding.UTF8.GetString(smokeResponse.Body))),
+                useSession:true);
+
+            response
+                .Should()
+                .NotBeNull();
+        }
+
+        [TestMethod]
+        public async Task OnAddRelationshipEvent_SmokeTestSucceeds()
+        {
+            OnAddRelationshipEvent onAddRelationshipEvent = new OnAddRelationshipEvent(_logger,
+                _specificationsService,
+                Services.BuildServiceProvider().GetRequiredService<IMessengerService>(),
+                 _userProfileProvider,
+                AppConfigurationHelper.CreateConfigurationRefresherProvider(),
+                 IsDevelopment);
+
+            SmokeResponse response = await RunSmokeTest(ServiceBusConstants.QueueNames.AddDefinitionRelationshipToSpecification,
+                async(ServiceBusReceivedMessage smokeResponse) => await onAddRelationshipEvent.Run(JsonConvert.DeserializeObject<ServiceBusReceivedMessage>(Encoding.UTF8.GetString(smokeResponse.Body))));
+
+            response
+                .Should()
+                .NotBeNull();
+        }
+
+        [TestMethod]
+        public async Task OnDeleteSpecifications_SmokeTestSucceeds()
+        {
+            OnDeleteSpecifications onDeleteSpecifications = new OnDeleteSpecifications(_logger,
+                _specificationsService,
+                Services.BuildServiceProvider().GetRequiredService<IMessengerService>(),
+                 _userProfileProvider,
+                AppConfigurationHelper.CreateConfigurationRefresherProvider(),
+                 IsDevelopment);
+
+            SmokeResponse response = await RunSmokeTest(ServiceBusConstants.QueueNames.DeleteSpecifications,
+                async(ServiceBusReceivedMessage smokeResponse) => await onDeleteSpecifications.Run(JsonConvert.DeserializeObject<ServiceBusReceivedMessage>(Encoding.UTF8.GetString(smokeResponse.Body))));
+
+            response
+                .Should()
+                .NotBeNull();
+        }
+
+        [TestMethod]
+        public async Task OnReIndexSpecification_SmokeTestSucceeds()
+        {
+            OnReIndexSpecification onReIndexSpecifications = new OnReIndexSpecification(_logger,
+                _specificationIndexerService,
+                Services.BuildServiceProvider().GetRequiredService<IMessengerService>(),
+                _userProfileProvider,
+                AppConfigurationHelper.CreateConfigurationRefresherProvider(),
+                IsDevelopment);
+
+            SmokeResponse response = await RunSmokeTest(ServiceBusConstants.QueueNames.ReIndexSingleSpecification,
+                async(ServiceBusReceivedMessage smokeResponse) => await onReIndexSpecifications.Run(JsonConvert.DeserializeObject<ServiceBusReceivedMessage>(Encoding.UTF8.GetString(smokeResponse.Body))), useSession: true);
+
+            response
+                .Should()
+                .NotBeNull();
+        }
+
+        private static IObsoleteFundingLineAndEnumDetection CreateObsoleteFundingLineAndEnumDetection() => Substitute.For<IObsoleteFundingLineAndEnumDetection>();
+
+        private static ILogger CreateLogger() => Substitute.For<ILogger>();
+
+        private static ISpecificationsService CreateSpecificationService() => Substitute.For<ISpecificationsService>();
+
+        private static IUserProfileProvider CreateUserProfileProvider() => Substitute.For<IUserProfileProvider>();
+
+        private static ISpecificationIndexingService CreateSpecificationIndexerService() => Substitute.For<ISpecificationIndexingService>();
+    }
+}

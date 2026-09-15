@@ -1,0 +1,87 @@
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using Azure.Messaging.ServiceBus;
+using CalculateFunding.Common.Models;
+using CalculateFunding.Models.Aggregations;
+using CalculateFunding.Models.Calcs;
+using CalculateFunding.Models.Code;
+using CalculateFunding.Models.Datasets.ViewModels;
+using CalculateFunding.Models.Versioning;
+using CalculateFunding.Services.Processing.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using SpecModel = CalculateFunding.Common.ApiClient.Specifications.Models;
+
+namespace CalculateFunding.Services.Calcs.Interfaces
+{
+    public interface ICalculationService : IProcessingService
+    {
+        Task<IActionResult> GetCalculationById(string calculationId);
+
+        Task<IActionResult> GetCurrentCalculationsForSpecification(string specificationId);
+
+        Task<IActionResult> GetCalculationSummariesForSpecification(string specificationId);
+
+        Task<IActionResult> GetCalculationVersions(CalculationVersionsCompareModel calculationVersionsCompareModel);
+
+        Task<IActionResult> GetCalculationHistory(string specificationId);
+
+        Task<IActionResult> EditCalculation(string specificationId,
+            string calculationId,
+            CalculationEditModel calculationEditModel,
+            Reference author,
+            string correlationId,
+            bool setAdditional = false,
+            bool skipInstruct = false,
+            bool skipValidation = false,
+            bool updateBuildProject = true,
+            bool setTemplate = false,
+            CalculationEditMode calculationEditMode = CalculationEditMode.User,
+            Calculation existingCalculation = null);
+
+        Task<IActionResult> UpdateCalculationStatus(string calculationId, EditStatusModel editStatusModel);
+
+        Task<ActionResult<IEnumerable<TypeInformation>>> GetCalculationCodeContext(string specificationId);
+
+        Task<IActionResult> ReIndex();
+
+        Task<IActionResult> GetCalculationStatusCounts(SpecificationListModel specifications);
+
+        Task<IActionResult> IsCalculationNameValid(string specificationId, string calculationName, string existingCalculationId);
+
+        Task ResetCalculationForFieldDefinitionChanges(IEnumerable<DatasetSpecificationRelationshipViewModel> relationships, string specificationId, IEnumerable<string> currentFieldDefinitionNames);
+
+        Task<IActionResult> GetCalculationByName(CalculationGetModel model);
+
+        Task<IActionResult> CreateAdditionalCalculation(
+            string specificationId, 
+            CalculationCreateModel model, 
+            Reference author, 
+            string correlationId,
+            bool skipCalcRun = false,
+            bool skipQueueCodeContextCacheUpdate = false,
+            bool overrideCreateModelAuthor = false,
+            bool updateBuildProject = false);
+
+        Task<IActionResult> GetCalculationsMetadataForSpecification(string specificationId);
+
+        Task<IActionResult> ProcessTemplateMappings(string specificationId, string templateVersion, string fundingStreamId);
+
+        Task<IActionResult> GetMappedCalculationsOfSpecificationTemplate(string specificationId, string fundingStreamId);
+
+        Task<IActionResult> CheckHasAllApprovedTemplateCalculationsForSpecificationId(string specificationId);
+
+        Task DeleteCalculations(ServiceBusReceivedMessage message);
+
+        Task<IEnumerable<Calculation>> UpdateCalculationCodeOnCalculationOrFundinglineChange(string previousName, string currentName, string specificationId, string @namespace, Reference user, bool isEnum = true, IEnumerable<string> calculationFilter = null);
+
+        Task<IActionResult> UpdateTemplateCalculationsForSpecification(string specificationId, string datasetDefinitionId, Reference user);
+
+        Task<BuildProject> UpdateBuildProject(SpecModel.SpecificationSummary specificationSummary);
+
+        Task<IActionResult> QueueApproveAllSpecificationCalculations(string specificationId, Reference author, string correlationId);
+
+        Task<IActionResult> QueueCalculationRun(string specificationId, QueueCalculationRunModel initiateCalculationRunModel);
+
+        IActionResult GenerateCalculationIdentifier(GenerateIdentifierModel generateIdentifierModel);
+    }
+}

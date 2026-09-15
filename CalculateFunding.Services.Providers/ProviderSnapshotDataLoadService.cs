@@ -1,0 +1,243 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Threading.Tasks;
+using AutoMapper;
+using Azure.Messaging.ServiceBus;
+using CalculateFunding.Common.ApiClient.FundingDataZone;
+using CalculateFunding.Common.ApiClient.FundingDataZone.Models;
+using CalculateFunding.Common.ApiClient.Jobs.Models;
+using CalculateFunding.Common.ApiClient.Models;
+using CalculateFunding.Common.ApiClient.Specifications;
+using CalculateFunding.Common.JobManagement;
+using CalculateFunding.Common.Models;
+using CalculateFunding.Common.Models.HealthCheck;
+using CalculateFunding.Common.Utility;
+using CalculateFunding.Models.Providers;
+using CalculateFunding.Models.Providers.ViewModels;
+using CalculateFunding.Services.Core;
+using CalculateFunding.Services.Core.Constants;
+using CalculateFunding.Services.Core.Extensions;
+using CalculateFunding.Services.Processing;
+using CalculateFunding.Services.Providers.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using Polly;
+using Serilog;
+
+namespace CalculateFunding.Services.Providers
+{
+    public class ProviderSnapshotDataLoadService : JobProcessingService, IProviderSnapshotDataLoadService
+    {
+        private const string SpecificationIdKey = "specification-id";
+        private const string FundingStreamIdKey = "fundingstream-id";
+        private const string ProviderSnapshotIdKey = "providerSanpshot-id";
+        private const string DisableQueueCalculationJobKey = "disableQueueCalculationJob";
+        private const string JobIdKey = "jobId";
+        private readonly ILogger _logger;
+        private readonly ISpecificationsApiClient _specificationsApiClient;
+        private readonly IProviderVersionService _providerVersionService;
+        private readonly AsyncPolicy _specificationsApiClientPolicy;
+        private readonly IFundingDataZoneApiClient _fundingDataZoneApiClient;
+        private readonly IMapper _mapper;
+        private readonly IJobManagement _jobManagement;
+        private readonly AsyncPolicy _fundingDataZoneApiClientPolicy;
+        private readonly IProviderSnapshotPersistService _providerSnapshotPersistService;
+        private const string FundingPeriodIdKey = "fundingPeriod-id";
+
+        public ProviderSnapshotDataLoadService(ILogger logger,
+            ISpecificationsApiClient specificationsApiClient,
+            IProviderVersionService providerVersionService,
+            IProvidersResiliencePolicies resiliencePolicies,
+            IFundingDataZoneApiClient fundingDataZoneApiClient,
+            IMapper mapper,
+            IJobManagement jobManagement,
+            IProviderSnapshotPersistService providerSnapshotPersistService) : base(jobManagement, logger)
+        {
+            Guard.ArgumentNotNull(logger, nameof(logger));
+            Guard.ArgumentNotNull(specificationsApiClient, nameof(specificationsApiClient));
+            Guard.ArgumentNotNull(providerVersionService, nameof(providerVersionService));
+            Guard.ArgumentNotNull(resiliencePolicies?.SpecificationsApiClient, nameof(resiliencePolicies.SpecificationsApiClient));
+            Guard.ArgumentNotNull(resiliencePolicies?.FundingDataZoneApiClient, nameof(resiliencePolicies.FundingDataZoneApiClient));
+            Guard.ArgumentNotNull(fundingDataZoneApiClient, nameof(fundingDataZoneApiClient));
+            Guard.ArgumentNotNull(mapper, nameof(mapper));
+            Guard.ArgumentNotNull(jobManagement, nameof(jobManagement));
+            Guard.ArgumentNotNull(providerSnapshotPersistService, nameof(providerSnapshotPersistService));
+
+            _logger = logger;
+            _specificationsApiClient = specificationsApiClient;
+            _providerVersionService = providerVersionService;
+            _specificationsApiClientPolicy = resiliencePolicies.SpecificationsApiClient;
+            _fundingDataZoneApiClientPolicy = resiliencePolicies.FundingDataZoneApiClient;
+            _fundingDataZoneApiClient = fundingDataZoneApiClient;
+            _providerSnapshotPersistService = providerSnapshotPersistService;
+            _mapper = mapper;
+            _jobManagement = jobManagement;
+        }
+
+        public async Task<ServiceHealth> IsHealthOk()
+        {
+            ServiceHealth providerVersionServiceHealth = await _providerVersionService.IsHealthOk();
+
+            ServiceHealth health = new ServiceHealth
+            {
+                Name = nameof(ProviderSnapshotDataLoadService)
+            };
+            health.Dependencies.AddRange(providerVersionServiceHealth.Dependencies);
+
+            return health;
+        }
+
+        public override async Task Process(ServiceBusReceivedMessage message)
+        {
+            Guard.ArgumentNotNull(message, nameof(message));
+
+            string specificationId = message.GetUserProperty<string>(SpecificationIdKey);
+            string fundingStreamId = message.GetUserProperty<string>(FundingStreamIdKey);
+            string providerSnapshotIdValue = message.GetUserProperty<string>(ProviderSnapshotIdKey);
+            string disableQueueCalculationJob = message.GetUserProperty<string>(DisableQueueCalculationJobKey);
+            string fundingPeriodId = message.GetUserProperty<string>(FundingPeriodIdKey);
+
+            Reference user = message.GetUserDetails();
+            string correlationId = message.GetCorrelationId();
+
+            if (string.IsNullOrWhiteSpace(providerSnapshotIdValue) || !int.TryParse(providerSnapshotIdValue, out int providerSnapshotId))
+            {
+                throw new NonRetriableException("Invalid provider snapshot id");
+            }
+
+            ProviderSnapshot providerSnapshot = await GetProviderSnapshot(fundingStreamId, providerSnapshotId, fundingPeriodId);
+
+            bool success = await _providerSnapshotPersistService.PersistSnapshot(providerSnapshot);
+
+            if (!success)
+            {
+                string errorMessage = $"Unable to persist provider snapshot for - {specificationId}, with provider snapshot id  - {providerSnapshot.ProviderSnapshotId}.";
+
+                _logger.Error(errorMessage);
+
+                throw new Exception(errorMessage);
+            }
+
+            HttpStatusCode httpStatusCode = await _specificationsApiClientPolicy.ExecuteAsync(() => _specificationsApiClient.SetProviderVersion(specificationId, providerSnapshot.ProviderVersionId));
+
+            if (!httpStatusCode.IsSuccess())
+            {
+                string errorMessage = $"Unable to update the specification - {specificationId}, with provider version id  - {providerSnapshot.ProviderVersionId}. HttpStatusCode - {httpStatusCode}";
+
+                _logger.Error(errorMessage);
+
+                throw new Exception(errorMessage);
+            }
+
+            JobCreateModel mapFdzDatasetsJobCreateModel = new JobCreateModel
+            {
+                Trigger = new Trigger
+                {
+                    EntityId = specificationId,
+                    EntityType = "Specification",
+                    Message = "Map datasets for all relationships in specification"
+                },
+                InvokerUserId = user.Id,
+                InvokerUserDisplayName = user.Name,
+                JobDefinitionId = JobConstants.DefinitionNames.MapFdzDatasetsJob,
+                ParentJobId = null,
+                SpecificationId = specificationId,
+                CorrelationId = correlationId,
+                Properties = new Dictionary<string, string>
+                {
+                    { "specification-id", specificationId },
+                    { "disableQueueCalculationJob", disableQueueCalculationJob },
+                }
+            };
+
+            try
+            {
+                await _jobManagement.QueueJob(mapFdzDatasetsJobCreateModel);
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Failed to queue MapFdzDatasetsJob for specification - {specificationId}";
+                _logger.Error(ex, errorMessage);
+                throw;
+            }
+        }
+
+        private ProviderVersionViewModel CreateProviderVersionViewModel(string fundingStreamId, string providerVersionId, ProviderSnapshot providerSnapshot, IEnumerable<Common.ApiClient.FundingDataZone.Models.Provider> fdzProviders)
+        {
+            IEnumerable<Models.Providers.Provider> providers = fdzProviders.Select(_ =>
+            {
+                return _mapper.Map<Common.ApiClient.FundingDataZone.Models.Provider, Models.Providers.Provider>(_, opt =>
+                    opt.AfterMap((src, dest) =>
+                    {
+                        dest.ProviderVersionId = providerVersionId;
+                        dest.ProviderVersionIdProviderId = $"{providerVersionId}_{dest.ProviderId}";
+                    }));
+            });
+
+            ProviderVersionViewModel providerVersionViewModel = new ProviderVersionViewModel()
+            {
+                FundingStream = fundingStreamId,
+                ProviderVersionId = providerVersionId,
+                VersionType = ProviderVersionType.SystemImported,
+                TargetDate = providerSnapshot.TargetDate,
+                Created = DateTimeOffset.Now,
+                Name = providerSnapshot.Name,
+                Description = providerSnapshot.Description,
+                Version = 1,
+                Providers = providers
+            };
+
+            return providerVersionViewModel;
+        }
+
+        private string GetErrorMessage(IActionResult actionResult, string providerVersionId)
+        {
+            return actionResult switch
+            {
+                ConflictResult _ => $"ProviderVersion alreay exists for - {providerVersionId}",
+                BadRequestObjectResult r => $"Validation Errors - {r.AsJson()}",
+                _ => string.Empty,
+            };
+        }
+
+        private async Task<ProviderSnapshot> GetProviderSnapshot(string fundingStreamId, int providerSnapshotId, string fundingPeriodId)
+        {
+            ApiResponse<IEnumerable<ProviderSnapshot>> fundingStreamProviderSnapshotsResponse = await _fundingDataZoneApiClientPolicy.ExecuteAsync(
+                            () => _fundingDataZoneApiClient.GetProviderSnapshotsForFundingStream(fundingStreamId, fundingPeriodId));
+
+            if (!fundingStreamProviderSnapshotsResponse.StatusCode.IsSuccess())
+            {
+                string errorMessage = $"Unable to retrieve FDZ ProviderSnapshots for funding stream -{fundingStreamId}";
+                _logger.Error(errorMessage);
+                throw new Exception(errorMessage);
+            }
+
+            ProviderSnapshot providerSnapshot = fundingStreamProviderSnapshotsResponse.Content.FirstOrDefault(x => x.ProviderSnapshotId == providerSnapshotId);
+
+            if (providerSnapshot == null)
+            {
+                string errorMessage = $"FDZ ProviderSnapshot not found for funding stream - {fundingStreamId} and provider snapshot id - {providerSnapshotId}";
+                _logger.Error(errorMessage);
+                throw new Exception(errorMessage);
+            }
+
+            return providerSnapshot;
+        }
+
+        private async Task<IEnumerable<Common.ApiClient.FundingDataZone.Models.Provider>> GetProvidersInSnapshot(int providerSnapshotId)
+        {
+            ApiResponse<IEnumerable<Common.ApiClient.FundingDataZone.Models.Provider>> providersInSnapshotResponse = await _fundingDataZoneApiClientPolicy.ExecuteAsync(
+                            () => _fundingDataZoneApiClient.GetProvidersInSnapshot(providerSnapshotId));
+
+            if (!providersInSnapshotResponse.StatusCode.IsSuccess())
+            {
+                string errorMessage = $"Unable to retrieve providers for ProviderSnapshotId -{providerSnapshotId}";
+                _logger.Error(errorMessage);
+                throw new Exception(errorMessage);
+            }
+
+            return providersInSnapshotResponse.Content;
+        }
+    }
+}

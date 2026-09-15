@@ -1,0 +1,56 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AzureFunctionsVersion>v4</AzureFunctionsVersion>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>4ea1a64f-0b26-44d4-a0a7-a23c10d04ee7</UserSecretsId>
+	  <AzureFunctionsIsolated>true</AzureFunctionsIsolated>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Azure.Data.Tables" Version="12.10.0" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.24.0" />
+    <PackageReference Include="Azure.Storage.Files.Shares" Version="12.22.0" />
+    <PackageReference Include="Azure.Storage.Queues" Version="12.22.0" />
+    <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.23.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.18.1" />
+    <PackageReference Include="Microsoft.Extensions.Azure" Version="1.11.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.1" />
+	  <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.22.2" />
+	  <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Blobs" Version="6.7.0" />
+	  <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Queues" Version="5.5.2" />
+	  <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.3.1" />
+	  <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.SignalRService" Version="2.0.1" />
+	  <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.EventHubs" Version="5.6.0" />
+	  <PackageReference Include="Azure.Messaging.EventHubs" Version="5.10.0" />
+  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\CalculateFunding.Functions.CalcEngine\CalculateFunding.Functions.CalcEngine.csproj" />
+	    <ProjectReference Include="..\CalculateFunding.Functions.Calcs\CalculateFunding.Functions.Calcs.csproj" />		
+		<ProjectReference Include="..\CalculateFunding.Functions.CosmosDbScaling\CalculateFunding.Functions.CosmosDbScaling.csproj" />		
+		<ProjectReference Include="..\CalculateFunding.Functions.Datasets\CalculateFunding.Functions.Datasets.csproj" />		
+		<ProjectReference Include="..\CalculateFunding.Functions.Jobs\CalculateFunding.Functions.Jobs.csproj" />
+		<ProjectReference Include="..\CalculateFunding.Functions.Notifications\CalculateFunding.Functions.Notifications.csproj" />		
+		<ProjectReference Include="..\CalculateFunding.Functions.Policy\CalculateFunding.Functions.Policy.csproj" />
+		<ProjectReference Include="..\CalculateFunding.Functions.Providers\CalculateFunding.Functions.Providers.csproj" />
+		<ProjectReference Include="..\CalculateFunding.Functions.Publishing\CalculateFunding.Functions.Publishing.csproj" />
+		<ProjectReference Include="..\CalculateFunding.Functions.Results\CalculateFunding.Functions.Results.csproj" />
+		<ProjectReference Include="..\CalculateFunding.Functions.Specs\CalculateFunding.Functions.Specs.csproj" />
+		<ProjectReference Include="..\CalculateFunding.Functions.Users\CalculateFunding.Functions.Users.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="host.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+		<None Update="local.settings.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToPublishDirectory>Never</CopyToPublishDirectory>
+		</None>
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="System.Threading.ExecutionContext" Alias="ExecutionContext" />
+	</ItemGroup>
+</Project>

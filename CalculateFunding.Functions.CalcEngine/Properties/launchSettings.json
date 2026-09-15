@@ -1,0 +1,18 @@
+{
+  "profiles": {
+    "CalculateFunding.Functions.CalcEngine": {
+      "commandName": "Project",
+      "commandLineArgs": "start --verbose",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker",
+      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
+      "containerRunArguments": "--init",
+      "httpPort": 30895,
+      "useSSL": false
+    }
+  }
+}

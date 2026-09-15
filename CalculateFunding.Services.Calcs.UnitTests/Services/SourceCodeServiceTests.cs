@@ -1,0 +1,658 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using CalculateFunding.Common.Models;
+using CalculateFunding.Models.Calcs;
+using CalculateFunding.Models.Calcs.ObsoleteItems;
+using CalculateFunding.Models.Publishing;
+using CalculateFunding.Services.Calcs.Interfaces;
+using CalculateFunding.Services.Calcs.Interfaces.CodeGen;
+using CalculateFunding.Services.CodeGeneration;
+using CalculateFunding.Services.CodeGeneration.VisualBasic;
+using CalculateFunding.Services.CodeMetadataGenerator.Interfaces;
+using CalculateFunding.Services.Compiler;
+using CalculateFunding.Services.Compiler.Interfaces;
+using CalculateFunding.Services.Compiler.Languages;
+using CalculateFunding.Services.Core.FeatureToggles;
+using FluentAssertions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Moq;
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+using Serilog;
+
+namespace CalculateFunding.Services.Calcs.Services
+{
+    [TestClass]
+    public class SourceCodeServiceTests
+    {
+        const string specificationId = "spec-id-1";
+        const string calculationId = "calc-id-1";
+        const string buildProjectId = "bp-id-1";
+
+        private IEnumerable<ObsoleteItem> obsoleteItems = new ObsoleteItem[0];
+
+        [TestMethod]
+        public void Compile_GivenStringCompareInCodeAndAggregatesIsEnabledAndCalculationAggregateFunctionsFound_CompilesCodeAndReturnsOk()
+        {
+            //Arrange
+            string stringCompareCode = "Public Class TestClass\nPublic Property E1 As ExampleClass\nPublic Function TestFunction As String\nIf E1.ProviderType = \"goodbye\" Then\nReturn Sum(Calc1)\nElse Return \"no\"\nEnd If\nEnd Function\nEnd Class";
+
+            Calculation calculation = new Calculation
+            {
+                Id = calculationId,
+                Current = new CalculationVersion
+                {
+                    Name = "TestFunction"
+                },
+                SpecificationId = specificationId,
+            };
+
+            IEnumerable<Calculation> calculations = new List<Calculation>() { calculation };
+
+            BuildProject buildProject = new BuildProject
+            {
+                SpecificationId = specificationId
+            };
+
+            ILogger logger = CreateLogger();
+
+            List<SourceFile> sourceFiles = new List<SourceFile>
+            {
+                new SourceFile { FileName = "project.vbproj", SourceCode = "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>netcoreapp2.0</TargetFramework></PropertyGroup></Project>" },
+                new SourceFile { FileName = "ExampleClass.vb", SourceCode = "Public Class ExampleClass\nPublic Property ProviderType() As String\nEnd Class" },
+                new SourceFile { FileName = "Calculation.vb", SourceCode = stringCompareCode }
+            };
+
+            Build build = new Build
+            {
+                Success = true,
+                SourceFiles = sourceFiles
+            };
+
+            Dictionary<string, string> sourceCodes = new Dictionary<string, string>()
+            {
+                { "TestFunction", stringCompareCode },
+                { "Calc1", "return 1" }
+            };
+
+            CompilerOptions compilerOptions = new CompilerOptions();
+
+            ISourceFileGenerator sourceFileGenerator = Substitute.For<ISourceFileGenerator>();
+            sourceFileGenerator
+                .GenerateCode(Arg.Is(buildProject), Arg.Is(calculations), compilerOptions, Arg.Any<IEnumerable<ObsoleteItem>>())
+                .Returns(sourceFiles);
+
+            ISourceFileGeneratorProvider sourceFileGeneratorProvider = CreateSourceFileGeneratorProvider();
+            sourceFileGeneratorProvider
+                .CreateSourceFileGenerator(Arg.Any<TargetLanguage>())
+                .Returns(sourceFileGenerator);
+
+            ICompiler compiler = CreateCompiler();
+
+            ICompilerFactory compilerFactory = CreateCompilerFactory(compiler, sourceFiles);
+
+            SourceCodeService sourceCodeService = CreateSourceCodeService(sourceFileGeneratorProvider: sourceFileGeneratorProvider, compilerFactory: compilerFactory);
+
+            //Act
+            Build buildResult = sourceCodeService.Compile(buildProject, calculations, obsoleteItems, compilerOptions);
+
+            //Assert
+            compiler
+                 .Received(1)
+                 .GenerateCode(Arg.Is<List<SourceFile>>(m => m.Count == 3), Arg.Any<IEnumerable<Calculation>>());
+        }
+
+        [TestMethod]
+        public void Compile_ErrorThrown_ReturnsErrorAsCompilerMessage()
+        {
+            //Arrange
+            BuildProject buildProject = new BuildProject { SpecificationId = "3456" };
+            IEnumerable<Calculation> calculations = new List<Calculation>();
+
+            string errorMessage = "The sky is red, I don't understand";
+
+            ISourceFileGenerator sourceFileGenerator = Substitute.For<ISourceFileGenerator>();
+            sourceFileGenerator
+                .GenerateCode(buildProject, calculations, Arg.Any<CompilerOptions>(), Arg.Any<IEnumerable<ObsoleteItem>>())
+                .Throws(new Exception(errorMessage));
+
+            ISourceFileGeneratorProvider sourceFileGeneratorProvider = CreateSourceFileGeneratorProvider();
+            sourceFileGeneratorProvider
+                .CreateSourceFileGenerator(TargetLanguage.VisualBasic)
+                .Returns(sourceFileGenerator);
+
+            SourceCodeService sourceCodeService = CreateSourceCodeService(sourceFileGeneratorProvider: sourceFileGeneratorProvider);
+
+            //Act
+            Build result = sourceCodeService.Compile(buildProject, calculations, obsoleteItems);
+
+            //Assert
+            result.CompilerMessages.Count
+                .Should()
+                .Be(1);
+            result.CompilerMessages.Count(x => x.Message == errorMessage && x.Severity == Severity.Error)
+                .Should()
+                .Be(1);
+
+            sourceFileGenerator
+                .Received(1)
+                .GenerateCode(buildProject,
+                    calculations,
+                    Arg.Is<CompilerOptions>(x => x.SpecificationId == buildProject.SpecificationId && !x.OptionStrictEnabled),
+                    Arg.Any<IEnumerable<ObsoleteItem>>());
+        }
+
+        [TestMethod]
+        public void SaveAssembly_GivenBuildProjectDoesntContainABuildObject_ThrowsArgumentException()
+        {
+            //Arrange
+            BuildProject buildProject = new BuildProject
+            {
+                SpecificationId = specificationId,
+            };
+
+            ISourceFileRepository sourceFileRepository = CreateSourceFileRepository();
+
+            ILogger logger = CreateLogger();
+
+            SourceCodeService sourceFileService = CreateSourceCodeService(sourceFileRepository, logger);
+
+            //Act
+            Func<Task> test = async () => await sourceFileService.SaveAssembly(buildProject);
+
+            //Assert
+            test
+                .Should()
+                .ThrowExactly<ArgumentException>()
+                .Which
+                .Message
+                .Should()
+                .Be($"Assembly not present on build project for specification id: '{buildProject.SpecificationId}'");
+        }
+
+        [TestMethod]
+        public void SaveAssembly_GivenBuildProjectDoesntNotContainAssembly_ThrowsArgumentException()
+        {
+            //Arrange
+            BuildProject buildProject = new BuildProject
+            {
+                SpecificationId = specificationId,
+                Build = new Build()
+            };
+
+            ISourceFileRepository sourceFileRepository = CreateSourceFileRepository();
+
+            ILogger logger = CreateLogger();
+
+            SourceCodeService sourceFileService = CreateSourceCodeService(sourceFileRepository, logger);
+
+            //Act
+            Func<Task> test = async () => await sourceFileService.SaveAssembly(buildProject);
+
+            //Assert
+            test
+                .Should()
+                .ThrowExactly<ArgumentException>()
+                .Which
+                .Message
+                .Should()
+                .Be($"Assembly not present on build project for specification id: '{buildProject.SpecificationId}'");
+        }
+
+        [TestMethod]
+        public void SaveAssembly_GivenAssemblyButFailsToSave_ThrowsException()
+        {
+            //Arrange
+            BuildProject buildProject = new BuildProject
+            {
+                SpecificationId = specificationId,
+                Build = new Build
+                {
+                    Assembly = new byte[100]
+                }
+            };
+
+            ISourceFileRepository sourceFileRepository = CreateSourceFileRepository();
+            sourceFileRepository.When(x => x.SaveAssembly(Arg.Is(buildProject.Build.Assembly), Arg.Is(buildProject.SpecificationId)))
+                                .Do(x => { throw new Exception(); });
+
+            ILogger logger = CreateLogger();
+
+            SourceCodeService sourceFileService = CreateSourceCodeService(sourceFileRepository, logger);
+
+            //Act
+            Func<Task> test = async () => await sourceFileService.SaveAssembly(buildProject);
+
+            //Assert
+            test
+                .Should()
+                .ThrowExactly<Exception>();
+
+            logger
+                .Received(1)
+                .Error(Arg.Any<Exception>(), Arg.Is($"Failed to save assembly for specification id '{buildProject.SpecificationId}'"));
+        }
+
+        [TestMethod]
+        public async Task SaveAssembly_GivenAssemblyAndSabeSuccessful_LogsSuccess()
+        {
+            //Arrange
+            BuildProject buildProject = new BuildProject
+            {
+                SpecificationId = specificationId,
+                Build = new Build
+                {
+                    Assembly = new byte[100]
+                }
+            };
+
+            ISourceFileRepository sourceFileRepository = CreateSourceFileRepository();
+
+            ILogger logger = CreateLogger();
+
+            SourceCodeService sourceFileService = CreateSourceCodeService(sourceFileRepository, logger);
+
+            //Act
+            await sourceFileService.SaveAssembly(buildProject);
+
+            //Assert
+            logger
+                .Received(1)
+                .Information($"Saved assembly for specification id: '{buildProject.SpecificationId}'");
+        }
+
+        [TestMethod]
+        public async Task GetAssembly_GivenAssemblyDoesNotExist_CompilesNewAssembly()
+        {
+            //Arrange
+            BuildProject buildProject = new BuildProject
+            {
+                SpecificationId = specificationId,
+            };
+
+            Calculation calculation = new Calculation
+            {
+                Id = calculationId,
+                Current = new CalculationVersion
+                {
+                    Name = "TestFunction"
+                },
+                SpecificationId = specificationId
+            };
+
+            IEnumerable<Calculation> calculations = new List<Calculation>() { calculation };
+
+            ISourceFileRepository sourceFileRepository = CreateSourceFileRepository();
+            sourceFileRepository
+                .DoesAssemblyExist(Arg.Is(specificationId))
+                .Returns(false);
+
+            List<SourceFile> sourceFiles = new List<SourceFile>
+            {
+                new SourceFile { FileName = "project.vbproj", SourceCode = "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>netcoreapp2.0</TargetFramework></PropertyGroup></Project>" },
+                new SourceFile { FileName = "ExampleClass.vb", SourceCode = "Public Class ExampleClass\nPublic Property ProviderType() As String\nEnd Class" },
+                new SourceFile { FileName = "Calculation.vb", SourceCode = "code" }
+            };
+
+            buildProject.Build = new Build
+            {
+                SourceFiles = sourceFiles,
+            };
+
+            Build newBuild = new Build
+            {
+                SourceFiles = sourceFiles,
+                Assembly = new byte[100]
+            };
+
+            ISourceFileGenerator sourceFileGenerator = Substitute.For<ISourceFileGenerator>();
+            sourceFileGenerator
+                .GenerateCode(Arg.Is(buildProject), Arg.Any<IEnumerable<Calculation>>(), Arg.Any<CompilerOptions>(), Arg.Any<IEnumerable<ObsoleteItem>>())
+                .Returns(sourceFiles);
+
+            ISourceFileGeneratorProvider sourceFileGeneratorProvider = CreateSourceFileGeneratorProvider();
+            sourceFileGeneratorProvider
+                .CreateSourceFileGenerator(Arg.Any<TargetLanguage>())
+                .Returns(sourceFileGenerator);
+
+            ICompiler compiler = CreateCompiler();
+            compiler
+                .GenerateCode(Arg.Any<List<SourceFile>>(), Arg.Any<IEnumerable<Calculation>>())
+                .Returns(newBuild);
+
+            ICompilerFactory compilerFactory = CreateCompilerFactory(compiler, sourceFiles);
+
+            SourceCodeService sourceCodeService = CreateSourceCodeService(sourceFileGeneratorProvider: sourceFileGeneratorProvider, compilerFactory: compilerFactory);
+
+            //Act
+            byte[] assembly = await sourceCodeService.GetAssembly(buildProject);
+
+            //Assert
+            assembly
+                .Should()
+                .NotBeNull();
+
+            assembly
+                .Length
+                .Should()
+                .Be(100);
+        }
+
+        [TestMethod]
+        public void GetAssembly_GivenNullStreamReturned_ThrowsException()
+        {
+            //Arrange
+            BuildProject buildProject = new BuildProject
+            {
+                SpecificationId = specificationId,
+            };
+
+            ISourceFileRepository sourceFileRepository = CreateSourceFileRepository();
+            sourceFileRepository
+                .DoesAssemblyExist(Arg.Is(specificationId))
+                .Returns(true);
+
+            sourceFileRepository
+                .GetAssembly(Arg.Is(specificationId))
+                .Returns((Stream)null);
+
+            ILogger logger = CreateLogger();
+
+            SourceCodeService sourceCodeService = CreateSourceCodeService(sourceFileRepository, logger);
+
+            //Act
+            Func<Task> test = async () => await sourceCodeService.GetAssembly(buildProject);
+
+            //Assert
+            test
+                .Should()
+                .ThrowExactly<Exception>()
+                .Which
+                .Message
+                .Should()
+                .Be($"Failed to get assembly for specification id: '{specificationId}'");
+        }
+
+        [TestMethod]
+        public async Task GetAssembly_GivenStreamReturned_ReturnsAssembly()
+        {
+            //Arrange
+            BuildProject buildProject = new BuildProject
+            {
+                SpecificationId = specificationId,
+            };
+
+            ISourceFileRepository sourceFileRepository = CreateSourceFileRepository();
+            sourceFileRepository
+                .DoesAssemblyExist(Arg.Is(specificationId))
+                .Returns(true);
+
+            Stream stream = new MemoryStream(new byte[100]);
+
+            sourceFileRepository
+                .GetAssembly(Arg.Is(specificationId))
+                .Returns(stream);
+
+            ILogger logger = CreateLogger();
+
+            SourceCodeService sourceCodeService = CreateSourceCodeService(sourceFileRepository, logger);
+
+            //Act
+            byte[] assembly = await sourceCodeService.GetAssembly(buildProject);
+
+            //Assert
+            assembly
+                .Should()
+                .NotBeNull();
+
+            assembly
+                .Length
+                .Should()
+                .Be(100);
+        }
+
+        [TestMethod]
+        public async Task SaveSourceFiles_GivenSourceFiles_CompressesAndSaves()
+        {
+            //Arrange
+            IEnumerable<SourceFile> sourceFiles = new[]
+            {
+                new SourceFile { FileName = "project.vbproj", SourceCode = "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>netcoreapp2.0</TargetFramework></PropertyGroup></Project>" },
+                new SourceFile { FileName = "ExampleClass.vb", SourceCode = "Public Class ExampleClass\nPublic Property ProviderType() As String\nEnd Class" },
+                new SourceFile { FileName = "Calculation.vb", SourceCode = "code" }
+            };
+
+            ISourceFileRepository sourceFileRepository = CreateSourceFileRepository();
+
+            SourceCodeService sourceCodeService = CreateSourceCodeService(sourceFileRepository);
+
+            //Act
+            await sourceCodeService.SaveSourceFiles(sourceFiles, specificationId, SourceCodeType.Release);
+
+            //Assert
+            await
+                sourceFileRepository
+                    .Received(1)
+                    .SaveSourceFiles(Arg.Any<byte[]>(), Arg.Is(specificationId), Arg.Is("release"));
+        }
+
+        [TestMethod]
+        public async Task SaveSourceFiles_GivenEmptySourceFiles_LogsAndDoesNotSave()
+        {
+            //Arrange
+            IEnumerable<SourceFile> sourceFiles = Enumerable.Empty<SourceFile>();
+
+            ISourceFileRepository sourceFileRepository = CreateSourceFileRepository();
+
+            ILogger logger = CreateLogger();
+
+            SourceCodeService sourceCodeService = CreateSourceCodeService(sourceFileRepository, logger);
+
+            //Act
+            await sourceCodeService.SaveSourceFiles(sourceFiles, specificationId, SourceCodeType.Preview);
+
+            //Assert
+            await
+                sourceFileRepository
+                    .DidNotReceive()
+                    .SaveSourceFiles(Arg.Any<byte[]>(), Arg.Is(specificationId), Arg.Is("preview"));
+
+            logger
+                .Received(1)
+                .Error($"Failed to compress source files for specification id: '{specificationId}'");
+        }
+
+        [DataTestMethod]
+        [DataRow(CalculationDataType.Decimal, "Return 10", "Decimal?", "Decimal?")]
+        [DataRow(CalculationDataType.Boolean, "Return True", "Boolean?", "Boolean?")]
+        [DataRow(CalculationDataType.String, "Return Nothing", "String", "String")]
+        [DataRow(CalculationDataType.Enum, "Return Nothing", "Calc1Options?", "Calc2Options?")]
+        public void CompileBuildProject_WhenBuildingCalculation_ThenCompilationUsesSourceCodeName(CalculationDataType calculationDataType, string sourceCode, string expectedType, string expectedType2)
+        {
+            // Arrange
+            string specificationId = "test-spec1";
+            List<Calculation> calculations = new List<Calculation>
+            {
+                new Calculation
+                {
+                    Id = "calcId1",
+                    Current = new CalculationVersion
+                    {
+                        SourceCode = sourceCode,
+                        Name = "calc 1",
+                        SourceCodeName = "differentCalcName",
+                        Description = "test calc",
+                        DataType = calculationDataType,
+                        AllowedEnumTypeValues = calculationDataType == CalculationDataType.Enum ? new List<string>(){"T1", "T2", "T3"} : null
+                    }
+                },
+                new Calculation
+                {
+                    Id = "calcId2",
+                    Current = new CalculationVersion
+                    {
+                        SourceCode = sourceCode,
+                        Name = "calc 2",
+                        SourceCodeName = "overrides",
+                        Description = "test calc",
+                        DataType = calculationDataType,
+                        AllowedEnumTypeValues = calculationDataType == CalculationDataType.Enum ? new List<string>(){"T1", "T2", "T3"} : null
+                    }
+                }
+            };
+
+            SourceCodeService sourceCodeService = CreateServiceWithRealCompiler();
+
+            string datasetName = "DatasetName";
+            string datasetName1 = "Public";
+
+            BuildProject buildProject = new BuildProject
+            {
+                SpecificationId = specificationId,
+                DatasetRelationships = CreatDatasetRelationshipSummary(datasetName, datasetName1),
+                Id = Guid.NewGuid().ToString(),
+                Name = specificationId,
+                FundingLines = new Dictionary<string, Funding>()
+            };
+
+            CompilerOptions compilerOptions = new CompilerOptions();
+
+            // Act
+            Build build = sourceCodeService.Compile(buildProject, calculations, obsoleteItems, compilerOptions);
+
+            // Assert
+            build.Success.Should().BeTrue();
+
+            string datasetsSourceCode = build.SourceFiles.First(s => s.FileName == "Datasets/Datasets.vb").SourceCode;
+            datasetsSourceCode.Should().Contain($"Public Property {datasetName}() As {datasetName}_definitionNameDataset");
+            datasetsSourceCode.Should().Contain($"Public Property [{datasetName1}]() As {datasetName1}_definitionNameDataset");
+
+            string calcSourceCode = build.SourceFiles.First(s => s.FileName == "Calculations.vb").SourceCode;
+            calcSourceCode.Should().Contain($"Public differentCalcName As Func(Of {expectedType}) = Nothing");
+            calcSourceCode.Should().Contain($"Public [overrides] As Func(Of {expectedType2}) = Nothing");
+            calcSourceCode.Should().NotContain($"Public calc1 As Func(Of {expectedType}) = Nothing");
+            calcSourceCode.Should().Contain($"differentCalcName()");
+            calcSourceCode.Should().NotContain($"calc1()");
+        }
+
+        private static SourceCodeService CreateSourceCodeService(
+            ISourceFileRepository sourceFilesRepository = null,
+            ILogger logger = null,
+            ICalculationsRepository calculationsRepository = null,
+            ISourceFileGeneratorProvider sourceFileGeneratorProvider = null,
+            ICompilerFactory compilerFactory = null,
+            ICodeMetadataGeneratorService codeMetadataGenerator = null,
+            ICalcsResiliencePolicies resiliencePolicies = null)
+        {
+            return new SourceCodeService(
+                sourceFilesRepository ?? CreateSourceFileRepository(),
+                logger ?? CreateLogger(),
+                calculationsRepository ?? CreateCalculationsRepository(),
+                sourceFileGeneratorProvider ?? CreateSourceFileGeneratorProvider(),
+                compilerFactory ?? CreateCompilerFactory(),
+                codeMetadataGenerator ?? CreateCodeMetadataGeneratorService(),
+                resiliencePolicies ?? CreatePolicies());
+        }
+
+        private SourceCodeService CreateServiceWithRealCompiler(IFeatureToggle featureToggle = null)
+        {
+            ILogger logger = CreateLogger();
+            ISourceFileGeneratorProvider sourceFileGeneratorProvider = CreateSourceFileGeneratorProvider();
+            sourceFileGeneratorProvider
+                .CreateSourceFileGenerator(Arg.Is(TargetLanguage.VisualBasic))
+                .Returns(new VisualBasicSourceFileGenerator(logger, new Mock<IFundingLineRoundingSettings>().Object));
+
+            VisualBasicCompiler vbCompiler = new VisualBasicCompiler(logger);
+            CompilerFactory compilerFactory = new CompilerFactory(null, vbCompiler);
+
+            return CreateSourceCodeService(sourceFileGeneratorProvider: sourceFileGeneratorProvider, calculationsRepository: Substitute.For<ICalculationsRepository>(), logger: logger, compilerFactory: compilerFactory);
+        }
+
+        private static ICalcsResiliencePolicies CreatePolicies()
+        {
+            return CalcsResilienceTestHelper.GenerateTestPolicies();
+        }
+
+        private static ISourceFileRepository CreateSourceFileRepository()
+        {
+            return Substitute.For<ISourceFileRepository>();
+        }
+
+        private static ILogger CreateLogger()
+        {
+            return Substitute.For<ILogger>();
+        }
+
+        private static ICalculationsRepository CreateCalculationsRepository()
+        {
+            return Substitute.For<ICalculationsRepository>();
+        }
+
+        private static ISourceFileGeneratorProvider CreateSourceFileGeneratorProvider()
+        {
+            return Substitute.For<ISourceFileGeneratorProvider>();
+        }
+
+        private static ICompilerFactory CreateCompilerFactory(ICompiler compiler = null, IEnumerable<SourceFile> sourceFiles = null)
+        {
+            ICompilerFactory compilerFactory = Substitute.For<ICompilerFactory>();
+            compilerFactory
+                .GetCompiler(Arg.Is(sourceFiles))
+                .Returns(compiler);
+
+            return compilerFactory;
+        }
+
+        private static ICompiler CreateCompiler()
+        {
+            return Substitute.For<ICompiler>();
+        }
+
+        private static ICodeMetadataGeneratorService CreateCodeMetadataGeneratorService()
+        {
+            return Substitute.For<ICodeMetadataGeneratorService>();
+        }
+
+        private static List<DatasetRelationshipSummary> CreatDatasetRelationshipSummary(params string[] datasets)
+        {
+            List<DatasetRelationshipSummary> datasetRelationshipSummaries = new List<DatasetRelationshipSummary>();
+            datasets.ForEach(_ => datasetRelationshipSummaries.Add(new DatasetRelationshipSummary()
+                {
+                    DatasetId = $"{_}_id",
+                    Name = _,
+                    Relationship = new Reference() { Name = "JB TEST 202003131731" },
+                    DatasetDefinitionId = $"{_}_definitionId",
+                    DatasetDefinition = new Models.Datasets.Schema.DatasetDefinition()
+                    {
+                        Id = $"{_}_definitionId",
+                        Name = $"{_}_definitionName",
+                        TableDefinitions = new List<Models.Datasets.Schema.TableDefinition>()
+                            {
+                                new Models.Datasets.Schema.TableDefinition()
+                                {
+                                    Name = "Early Years AP Census Year 1",
+                                    FieldDefinitions = new List<Models.Datasets.Schema.FieldDefinition>()
+                                    {
+                                        new Models.Datasets.Schema.FieldDefinition()
+                                        {
+                                            Name = "AP Universal Entitlement 2YO",
+                                        },
+                                        new Models.Datasets.Schema.FieldDefinition()
+                                        {
+                                            Name = "AP Universal Entitlement 3YO",
+                                        }
+                                    }
+                                }
+                            }
+                    }
+
+                }
+            ));
+
+            return datasetRelationshipSummaries;
+        }
+    }
+}

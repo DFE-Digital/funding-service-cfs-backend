@@ -1,0 +1,73 @@
+using Azure.Messaging.ServiceBus;
+using CalculateFunding.Common.Models;
+using CalculateFunding.Common.ServiceBus.Interfaces;
+using CalculateFunding.Functions.CosmosDbScaling.ServiceBus;
+using CalculateFunding.Services.Core.Constants;
+using CalculateFunding.Services.CosmosDbScaling.Interfaces;
+using CalculateFunding.Tests.Common;
+using CalculateFunding.Tests.Common.Helpers;
+using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
+using NSubstitute;
+using Serilog;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace CalculateFunding.Functions.CosmosDbScaling.SmokeTests
+{
+    [TestClass]
+    public class CosmosDbScalingFunctions : SmokeTestBase
+    {
+        private static ILogger _logger;
+        private static ICosmosDbScalingService _cosmosDbScalingService;
+        private static IUserProfileProvider _userProfileProvider;
+
+        [ClassInitialize]
+        public static void SetupTests(TestContext tc)
+        {
+            SetupTests("cosmosdbscaling");
+
+            _logger = CreateLogger();
+
+            _cosmosDbScalingService = CreateCosmosDbScalingService();
+
+            _userProfileProvider = CreateUserProfileProvider();
+        }
+
+        [TestMethod]
+        public async Task OnScaleUpCosmosDbCollection_SmokeTestSucceeds()
+        {
+            OnScaleUpCosmosDbCollection onScaleUpCosmosDbCollection = new OnScaleUpCosmosDbCollection(_logger,
+                _cosmosDbScalingService,
+                Services.BuildServiceProvider().GetRequiredService<IMessengerService>(),
+                _userProfileProvider,
+                AppConfigurationHelper.CreateConfigurationRefresherProvider(),
+                IsDevelopment);
+
+            SmokeResponse response = await RunSmokeTest(ServiceBusConstants.TopicSubscribers.ScaleUpCosmosdbCollection,
+                async(ServiceBusReceivedMessage smokeResponse) => await onScaleUpCosmosDbCollection.Run(JsonConvert.DeserializeObject<ServiceBusReceivedMessage>(Encoding.UTF8.GetString(smokeResponse.Body))),
+                ServiceBusConstants.TopicNames.JobNotifications);
+
+            response
+                .Should()
+                .NotBeNull();
+        }
+
+        private static ILogger CreateLogger()
+        {
+            return Substitute.For<ILogger>();
+        }
+
+        private static ICosmosDbScalingService CreateCosmosDbScalingService()
+        {
+            return Substitute.For<ICosmosDbScalingService>();
+        }
+
+        private static IUserProfileProvider CreateUserProfileProvider()
+        {
+            return Substitute.For<IUserProfileProvider>();
+        }
+    }
+}
