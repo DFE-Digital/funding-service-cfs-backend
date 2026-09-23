@@ -1,0 +1,313 @@
+{
+  "name": "providersindexer",
+  "dataSourceName": "providersdatasource",
+  "targetIndexName": "providersindex",
+  "schedule": {
+    "interval": "PT2H"
+  },
+  "fieldMappings": [
+    {
+      "sourceFieldName": "/providerVersionId_providerId",
+      "targetFieldName": "id"
+    },
+    {
+      "sourceFieldName": "/providerVersionId",
+      "targetFieldName": "providerVersionId"
+    },
+    {
+      "sourceFieldName": "/providerId",
+      "targetFieldName": "providerId"
+    },
+    {
+      "sourceFieldName": "/name",
+      "targetFieldName": "name"
+    },
+    {
+      "sourceFieldName": "/urn",
+      "targetFieldName": "urn"
+    },
+    {
+      "sourceFieldName": "/ukPrn",
+      "targetFieldName": "ukprn"
+    },
+    {
+      "sourceFieldName": "/upin",
+      "targetFieldName": "upin"
+    },
+    {
+      "sourceFieldName": "/establishmentNumber",
+      "targetFieldName": "establishmentNumber"
+    },
+    {
+      "sourceFieldName": "/dfeEstablishmentNumber",
+      "targetFieldName": "dfeEstablishmentNumber"
+    },
+    {
+      "sourceFieldName": "/authority",
+      "targetFieldName": "authority"
+    },
+    {
+      "sourceFieldName": "/providerType",
+      "targetFieldName": "providerType"
+    },
+    {
+      "sourceFieldName": "/providerSubType",
+      "targetFieldName": "providerSubType"
+    },
+    {
+      "sourceFieldName": "/dateOpened",
+      "targetFieldName": "dateOpened"
+    },
+    {
+      "sourceFieldName": "/dateClosed",
+      "targetFieldName": "dateClosed"
+    },
+    {
+      "sourceFieldName": "/providerProfileIdType",
+      "targetFieldName": "providerProfileIdType"
+    },
+    {
+      "sourceFieldName": "/laCode",
+      "targetFieldName": "laCode"
+    },
+    {
+      "sourceFieldName": "/navVendorNo",
+      "targetFieldName": "navVendorNo"
+    },
+    {
+      "sourceFieldName": "/crmAccountId",
+      "targetFieldName": "crmAccountId"
+    },
+    {
+      "sourceFieldName": "/legalName",
+      "targetFieldName": "legalName"
+    },
+    {
+      "sourceFieldName": "/status",
+      "targetFieldName": "status"
+    },
+    {
+      "sourceFieldName": "/phaseOfEducation",
+      "targetFieldName": "phaseOfEducation"
+    },
+    {
+      "sourceFieldName": "/reasonEstablishmentOpened",
+      "targetFieldName": "reasonEstablishmentOpened"
+    },
+    {
+      "sourceFieldName": "/reasonEstablishmentClosed",
+      "targetFieldName": "reasonEstablishmentClosed"
+    },
+    {
+      "sourceFieldName": "/successor",
+      "targetFieldName": "successor"
+    },
+    {
+      "sourceFieldName": "/trustStatus",
+      "targetFieldName": "trustStatus"
+    },
+    {
+      "sourceFieldName": "/trustName",
+      "targetFieldName": "trustName"
+    },
+    {
+      "sourceFieldName": "/trustCode",
+      "targetFieldName": "trustCode"
+    },
+    {
+      "sourceFieldName": "/town",
+      "targetFieldName": "town"
+    },
+    {
+      "sourceFieldName": "/postcode",
+      "targetFieldName": "postcode"
+    },
+    {
+      "sourceFieldName": "/localAuthorityName",
+      "targetFieldName": "localAuthorityName"
+    },
+    {
+      "sourceFieldName": "/companiesHouseNumber",
+      "targetFieldName": "companiesHouseNumber"
+    },
+    {
+      "sourceFieldName": "/groupIdNumber",
+      "targetFieldName": "groupIdNumber"
+    },
+    {
+      "sourceFieldName": "/rscRegionName",
+      "targetFieldName": "rscRegionName"
+    },
+    {
+      "sourceFieldName": "/rscRegionCode",
+      "targetFieldName": "rscRegionCode"
+    },
+    {
+      "sourceFieldName": "/governmentOfficeRegionName",
+      "targetFieldName": "governmentOfficeRegionName"
+    },
+    {
+      "sourceFieldName": "/governmentOfficeRegionCode",
+      "targetFieldName": "governmentOfficeRegionCode"
+    },
+    {
+      "sourceFieldName": "/districtName",
+      "targetFieldName": "districtName"
+    },
+    {
+      "sourceFieldName": "/districtCode",
+      "targetFieldName": "districtCode"
+    },
+    {
+      "sourceFieldName": "/wardName",
+      "targetFieldName": "wardName"
+    },
+    {
+      "sourceFieldName": "/wardCode",
+      "targetFieldName": "wardCode"
+    },
+    {
+      "sourceFieldName": "/censusWardName",
+      "targetFieldName": "censusWardName"
+    },
+    {
+      "sourceFieldName": "/censusWardCode",
+      "targetFieldName": "censusWardCode"
+    },
+    {
+      "sourceFieldName": "/middleSuperOutputAreaName",
+      "targetFieldName": "middleSuperOutputAreaName"
+    },
+    {
+      "sourceFieldName": "/middleSuperOutputAreaCode",
+      "targetFieldName": "middleSuperOutputAreaCode"
+    },
+    {
+      "sourceFieldName": "/lowerSuperOutputAreaName",
+      "targetFieldName": "lowerSuperOutputAreaName"
+    },
+    {
+      "sourceFieldName": "/lowerSuperOutputAreaCode",
+      "targetFieldName": "lowerSuperOutputAreaCode"
+    },
+    {
+      "sourceFieldName": "/parliamentaryConstituencyName",
+      "targetFieldName": "parliamentaryConstituencyName"
+    },
+    {
+      "sourceFieldName": "/parliamentaryConstituencyCode",
+      "targetFieldName": "parliamentaryConstituencyCode"
+    },
+    {
+      "sourceFieldName": "/countryCode",
+      "targetFieldName": "countryCode"
+    },
+    {
+      "sourceFieldName": "/countryName",
+      "targetFieldName": "countryName"
+    },
+    {
+      "sourceFieldName": "/localGovernmentGroupTypeCode",
+      "targetFieldName": "localGovernmentGroupTypeCode"
+    },
+    {
+      "sourceFieldName": "/localGovernmentGroupTypeName",
+      "targetFieldName": "localGovernmentGroupTypeName"
+    },
+    {
+      "sourceFieldName": "/street",
+      "targetFieldName": "street"
+    },
+    {
+      "sourceFieldName": "/locality",
+      "targetFieldName": "locality"
+    },
+    {
+      "sourceFieldName": "/address3",
+      "targetFieldName": "address3"
+    },
+    {
+      "sourceFieldName": "/paymentOrganisationIdentifier",
+      "targetFieldName": "paymentOrganisationIdentifier"
+    },
+    {
+      "sourceFieldName": "/paymentOrganisationName",
+      "targetFieldName": "paymentOrganisationName"
+    },
+    {
+      "sourceFieldName": "/providerTypeCode",
+      "targetFieldName": "providerTypeCode"
+    },
+    {
+      "sourceFieldName": "/providerSubTypeCode",
+      "targetFieldName": "providerSubTypeCode"
+    },
+    {
+      "sourceFieldName": "/previousLAName",
+      "targetFieldName": "previousLAName"
+    },
+    {
+      "sourceFieldName": "/previousLACode",
+      "targetFieldName": "previousLACode"
+    },
+    {
+      "sourceFieldName": "/previousEstablishmentNumber",
+      "targetFieldName": "previousEstablishmentNumber"
+    },
+    {
+      "sourceFieldName": "/furtherEducationTypeCode",
+      "targetFieldName": "furtherEducationTypeCode"
+    },
+    {
+      "sourceFieldName": "/furtherEducationTypeName",
+      "targetFieldName": "furtherEducationTypeName"
+    },
+    {
+      "sourceFieldName": "/predecessors",
+      "targetFieldName": "predecessors"
+    },
+    {
+      "sourceFieldName": "/successors",
+      "targetFieldName": "successors"
+    },
+    {
+      "sourceFieldName": "/phaseOfEducationCode",
+      "targetFieldName": "phaseOfEducationCode"
+    },
+    {
+      "sourceFieldName": "/statutoryLowAge",
+      "targetFieldName": "statutoryLowAge"
+    },
+    {
+      "sourceFieldName": "/statutoryHighAge",
+      "targetFieldName": "statutoryHighAge"
+    },
+    {
+      "sourceFieldName": "/officialSixthFormCode",
+      "targetFieldName": "officialSixthFormCode"
+    },
+    {
+      "sourceFieldName": "/officialSixthFormName",
+      "targetFieldName": "officialSixthFormName"
+    },
+    {
+      "sourceFieldName": "/statusCode",
+      "targetFieldName": "statusCode"
+    },
+    {
+      "sourceFieldName": "/reasonEstablishmentOpenedCode",
+      "targetFieldName": "reasonEstablishmentOpenedCode"
+    },
+    {
+      "sourceFieldName": "/reasonEstablishmentClosedCode",
+      "targetFieldName": "reasonEstablishmentClosedCode"
+    }
+  ],
+  "parameters": {
+    "configuration": {
+      "parsingMode": "jsonArray",
+      "documentRoot": "/providers",
+      "executionEnvironment": "private"
+    }
+  }
+}

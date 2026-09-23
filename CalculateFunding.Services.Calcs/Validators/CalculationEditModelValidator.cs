@@ -1,0 +1,129 @@
+﻿using System.Linq;
+using CalculateFunding.Common.Utility;
+using CalculateFunding.Models.Calcs;
+using CalculateFunding.Services.Calcs.Interfaces;
+using CalculateFunding.Services.CodeGeneration.VisualBasic.Type;
+using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
+
+namespace CalculateFunding.Services.Calcs.Validators
+{
+    public class CalculationEditModelValidator : AbstractValidator<CalculationEditModel>
+    {
+        private readonly IPreviewService _previewService;
+        private readonly ICalculationsRepository _calculationRepository;
+        private readonly char[] CalculationNameNotAllowedCharacters = new[] { '\"' };
+        private const int MinCalculationNameCharLimit = 4;
+
+        public CalculationEditModelValidator(
+            IPreviewService previewService,
+            ICalculationsRepository calculationRepository)
+        {
+            Guard.ArgumentNotNull(previewService, nameof(previewService));
+            Guard.ArgumentNotNull(calculationRepository, nameof(calculationRepository));
+
+            _previewService = previewService;
+            _calculationRepository = calculationRepository;
+
+            RuleFor(model => model.SpecificationId)
+              .NotEmpty()
+              .NotNull()
+              .WithMessage("Null or empty specification id provided.");
+
+            RuleFor(model => model.ValueType)
+             .NotNull()
+             .WithMessage("Null value type was provided.");
+
+            RuleFor(model => model.CalculationId)
+             .NotEmpty()
+             .NotNull()
+             .WithMessage("Null or empty calculation id provided.");
+
+            RuleFor(model => model.Name)
+             .Custom((name, context) =>
+             {
+                 CalculationEditModel calculationEditModel = context.ParentContext.InstanceToValidate as CalculationEditModel;
+                 if (string.IsNullOrWhiteSpace(calculationEditModel.Name))
+                 {
+                     context.AddFailure("Null or empty calculation name provided.");
+                     return;
+                 }
+
+                 foreach (char calculationNameNotAllowedCharacter in CalculationNameNotAllowedCharacters)
+                 {
+                     if (calculationEditModel.Name.Contains(calculationNameNotAllowedCharacter))
+                     {
+                         context.AddFailure($"Calculation name contains not allowed character: '{calculationNameNotAllowedCharacter}'");
+                         return;
+                     }
+                 }
+
+                 if (calculationEditModel.Name.Length < MinCalculationNameCharLimit)
+                 {
+                     Calculation existingCalculation = _calculationRepository.GetCalculationById(calculationEditModel.CalculationId).Result;
+                     if (existingCalculation.Current.CalculationType == CalculationType.Additional)
+                     {
+                         context.AddFailure($"Calculation name length should be at least {MinCalculationNameCharLimit} characters");
+                     }
+                 }
+
+                 if (!string.IsNullOrWhiteSpace(calculationEditModel.SpecificationId))
+                {
+                    Calculation calculation = _calculationRepository.GetCalculationBySpecificationIdAndCalculationName(calculationEditModel.SpecificationId, calculationEditModel.Name).Result;
+
+                     if (calculation != null && calculation.Id != calculationEditModel.CalculationId)
+                         context.AddFailure($"A calculation already exists with the name: '{calculationEditModel.Name}' for this specification");
+                }
+             });
+
+            RuleFor(model => model.Name)
+              .Custom((name, context) =>
+              {
+                  CalculationEditModel calculationEditModel = context.ParentContext.InstanceToValidate as CalculationEditModel;
+                  if (!string.IsNullOrWhiteSpace(calculationEditModel.SpecificationId))
+                  {
+                      string sourceCodeName = new VisualBasicTypeIdentifierGenerator().GenerateIdentifier(calculationEditModel.Name);
+
+                      Calculation calculation = _calculationRepository.GetCalculationBySpecificationIdAndCalculationSourceCodeName(calculationEditModel.SpecificationId, sourceCodeName).Result;
+
+                      if (calculation != null && calculation.Id != calculationEditModel.CalculationId)
+                          context.AddFailure($"A calculation already exists with the source code name: '{sourceCodeName}' for this specification");
+                  }
+              });
+
+            RuleFor(model => model.SourceCode)
+             .Custom((sc, context) =>
+             {
+                 CalculationEditModel calculationEditModel = context.ParentContext.InstanceToValidate as CalculationEditModel;
+                 if (string.IsNullOrWhiteSpace(calculationEditModel.SourceCode))
+                 {
+                     context.AddFailure("Null or empty source code provided.");
+                 }
+                 else
+                 {
+                     PreviewRequest previewRequest = new PreviewRequest
+                     {
+                         SpecificationId = calculationEditModel.SpecificationId,
+                         CalculationId = calculationEditModel.CalculationId,
+                         Name = calculationEditModel.Name,
+                         SourceCode = calculationEditModel.SourceCode,
+                         DataType = calculationEditModel.DataType
+                     };
+
+                     IActionResult result = _previewService.Compile(previewRequest).Result;
+
+                     OkObjectResult okObjectResult = result as OkObjectResult;
+
+                     if (okObjectResult.Value is PreviewResponse response)
+                     {
+                         if (!response.CompilerOutput.CompilerMessages.IsNullOrEmpty())
+                         {
+                             context.AddFailure("There are errors in the source code provided");
+                         }
+                     }
+                 }
+             });
+
+        }
+    }
+}

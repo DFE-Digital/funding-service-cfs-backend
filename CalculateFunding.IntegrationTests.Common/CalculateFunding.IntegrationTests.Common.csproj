@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CalculateFunding.Repositories.Common.EFCore\CalculateFunding.Repositories.Common.EFCore.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Tests.Common\CalculateFunding.Tests.Common.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.19.1" />
+    
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Jobs" Version="6.0.0" />
+    <PackageReference Include="EPPlus.Core" Version="1.5.4" />
+    <PackageReference Include="FormatWith" Version="3.0.1" />
+    
+    
+    <PackageReference Include="MSTest.TestFramework" Version="2.2.8" />
+    
+  </ItemGroup>
+</Project>
+

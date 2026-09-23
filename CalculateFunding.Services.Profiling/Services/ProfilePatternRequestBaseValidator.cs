@@ -1,0 +1,133 @@
+using System;
+using System.Linq;
+using CalculateFunding.Services.Profiling.Models;
+using FluentValidation;
+using Microsoft.Azure.Cosmos.Serialization.HybridRow;
+
+namespace CalculateFunding.Services.Profiling.Services
+{
+    public abstract class ProfilePatternRequestBaseValidator<TRequest> : AbstractValidator<TRequest>
+        where TRequest : ProfilePatternRequestBase
+    {
+        protected ProfilePatternRequestBaseValidator()
+        {
+            RuleFor(_ => _.Pattern.FundingPeriodId)
+                .NotEmpty()
+                .WithMessage("You must provide a funding period id")
+                .When(_ => _.Pattern != null);
+
+            RuleFor(_ => _.Pattern.FundingStreamId)
+                .NotEmpty()
+                .WithMessage("You must provide a funding stream id")
+                .When(_ => _.Pattern != null);
+
+            RuleFor(_ => _.Pattern.FundingLineId)
+                .NotEmpty()
+                .WithMessage("You must provide a funding line id")
+                .When(_ => _.Pattern != null);
+
+            RuleFor(_ => _.Pattern.FundingStreamPeriodStartDate)
+                .GreaterThan(DateTime.MinValue)
+                .WithMessage("You must provide a funding stream period start date")
+                .When(_ => _.Pattern != null);
+
+            RuleFor(_ => _.Pattern.FundingStreamPeriodEndDate)
+                .GreaterThan(_ => _.Pattern.FundingStreamPeriodStartDate)
+                .WithMessage("Funding stream period end date must after funding stream period start date")
+                .When(_ => _.Pattern.FundingStreamPeriodStartDate > DateTime.MinValue)
+                .When(_ => _.Pattern != null);
+
+            RuleFor(_ => _.Pattern.ProfilePatternDisplayName)
+                .NotEmpty()
+                .WithMessage("Null or Empty profile pattern display name provided")
+                .When(_ => _.Pattern != null);
+
+            RuleFor(_ => _.Pattern)
+                .Custom((pattern, ctx) =>
+                {
+                    if (pattern == null)
+                    {
+                        return;
+                    }
+
+                    ProfilePeriodPattern[] patterns = pattern.ProfilePattern;
+
+                    if (patterns.IsNullOrEmpty())
+                    {
+                        ctx.AddFailure(nameof(FundingStreamPeriodProfilePattern.ProfilePattern),
+                            "The profile pattern must have at least one period");
+
+                        return;
+                    }
+
+                    if (patterns.GroupBy(_ => new
+                    {
+                        _.PeriodYear,
+                        _.PeriodType,
+                        _.Period,
+                        _.Occurrence
+                    }).Any(_ => _.Count() > 1))
+                    {
+                        ctx.AddFailure(nameof(FundingStreamPeriodProfilePattern.ProfilePattern),
+                            "The profile periods must be for unique dates and occurence");
+                    }
+                    //Added this condition [pattern.FundingStreamId != "ILPREC"] becuese Set up profiling configuration for ProfilePatternType is Calculation  with the calc Ids for testing
+                    //and clone ILP 22/23 spec for testing
+                    if (patterns.Sum(_ => _.PeriodPatternPercentage) != 100M && pattern.ProfilePatternType != ProfilePatternType.Calculation)
+                    {
+                        ctx.AddFailure(nameof(FundingStreamPeriodProfilePattern.ProfilePattern),
+                            "The profile period percentages must total 100%");
+                    }
+                });
+
+            RuleFor(_ => _.Pattern)
+                .Custom((pattern, ctx) =>
+                {
+                    if(pattern == null)
+                    {
+                        return;
+                    }
+
+                    if(string.IsNullOrWhiteSpace(pattern.ProfilePatternKey) && 
+                     !pattern.ProviderTypeSubTypes.IsNullOrEmpty())
+                    {
+                        ctx.AddFailure(nameof(FundingStreamPeriodProfilePattern.ProfilePatternKey), "Default pattern not allowed to have ProviderTypeSubTypes");
+                    }
+                });
+
+            //Need to write a rule for when calc ids are referenced in the profile to make sure that
+            //the calc ids exist in the funding template for the selected funding stream
+            // Check CalculationIds in the profile pattern must be unique
+            RuleFor(_ => _.Pattern)
+              .Custom((pattern, ctx) =>
+              {
+                  if (pattern == null)
+                  {
+                      return;
+                  }
+
+                  if (pattern.ProfilePatternType == ProfilePatternType.Calculation)
+                  {
+                      ProfilePeriodPattern[] patterns = pattern.ProfilePattern;
+                      if (patterns.IsNullOrEmpty())
+                      {
+                          ctx.AddFailure(nameof(FundingStreamPeriodProfilePattern.ProfilePattern),
+                              "The profile pattern must have at least one period");
+
+                          return;
+                      }
+
+                      bool result = false;
+                      var calsIds = patterns.Select(x => x.PeriodPatternCalculationId);
+                      var distinctList = calsIds.Distinct().ToList();
+                      result = (calsIds.Count() == distinctList.Count());
+                      if (!result)
+                      {
+                          ctx.AddFailure(nameof(FundingStreamPeriodProfilePattern.ProfilePattern),
+                              "The profile period for calculationId must be unique ");
+                      }
+                  }                 
+              });
+        }
+    }
+}

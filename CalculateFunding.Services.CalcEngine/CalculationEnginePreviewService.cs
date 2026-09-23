@@ -1,0 +1,193 @@
+﻿using AutoMapper;
+using CalculateFunding.Common.ApiClient.DataSets;
+using CalculateFunding.Common.ApiClient.DataSets.Models;
+using CalculateFunding.Common.ApiClient.Models;
+using CalculateFunding.Common.ApiClient.Providers;
+using CalculateFunding.Common.ApiClient.Providers.Models.Search;
+using CalculateFunding.Common.ApiClient.Specifications;
+using CalculateFunding.Common.ApiClient.Specifications.Models;
+using CalculateFunding.Common.Utility;
+using CalculateFunding.Models.Aggregations;
+using CalculateFunding.Models.Calcs;
+using CalculateFunding.Models.Datasets;
+using CalculateFunding.Models.ProviderLegacy;
+using CalculateFunding.Services.CalcEngine.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using Polly;
+using Serilog;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Reflection;
+using System.Threading.Tasks;
+
+namespace CalculateFunding.Services.CalcEngine
+{
+    public class CalculationEnginePreviewService : ICalculationEnginePreviewService
+    {
+        private readonly ICalculationEngine _calculationEngine;
+        private readonly IMapper _mapper;
+        private readonly IProvidersApiClient _providersApiClient;
+        private readonly ISpecificationsApiClient _specificationsApiClient;
+        private readonly IDatasetsApiClient _datasetsApiClient;
+        private readonly IProviderSourceDatasetsRepository _providerSourceDatasetsRepository;
+        private readonly ICalculationAggregationService _calculationAggregationService;
+        private readonly ICalculationsRepository _calculationsRepository;
+        private readonly ILogger _logger;
+
+        private readonly AsyncPolicy _providersApiClientPolicy;
+        private readonly AsyncPolicy _specificationsApiPolicy;
+        private readonly AsyncPolicy _datasetsApiPolicy;
+        private readonly AsyncPolicy _calculationsApiClientPolicy;
+
+        public CalculationEnginePreviewService(
+            ICalculationEngine calculationEngine,
+            IProvidersApiClient providersApiClient,
+            IMapper mapper,
+            ICalculatorResiliencePolicies resiliencePolicies,
+            ISpecificationsApiClient specificationsApiClient,
+            IDatasetsApiClient datasetsApiClient,
+            IProviderSourceDatasetsRepository providerSourceDatasetsRepository,
+            ICalculationAggregationService calculationAggregationService,
+            ICalculationsRepository calculationsRepository,
+            ILogger logger)
+        {
+            Guard.ArgumentNotNull(calculationEngine, nameof(calculationEngine));
+            Guard.ArgumentNotNull(providersApiClient, nameof(providersApiClient));
+            Guard.ArgumentNotNull(datasetsApiClient, nameof(datasetsApiClient));
+            Guard.ArgumentNotNull(mapper, nameof(mapper));
+            Guard.ArgumentNotNull(providerSourceDatasetsRepository, nameof(providerSourceDatasetsRepository));
+            Guard.ArgumentNotNull(calculationAggregationService, nameof(calculationAggregationService));
+            Guard.ArgumentNotNull(calculationsRepository, nameof(calculationsRepository));
+            Guard.ArgumentNotNull(logger, nameof(logger));
+
+            Guard.ArgumentNotNull(resiliencePolicies, nameof(resiliencePolicies));
+            Guard.ArgumentNotNull(resiliencePolicies.SpecificationsApiClient, nameof(resiliencePolicies.SpecificationsApiClient));
+            Guard.ArgumentNotNull(resiliencePolicies.DatasetsApiClient, nameof(resiliencePolicies.DatasetsApiClient));
+            Guard.ArgumentNotNull(resiliencePolicies.ProvidersApiClient, nameof(resiliencePolicies.ProvidersApiClient));
+            Guard.ArgumentNotNull(resiliencePolicies.CalculationsApiClient, nameof(resiliencePolicies.CalculationsApiClient));
+
+            _calculationEngine = calculationEngine;
+            _providersApiClient = providersApiClient;
+            _mapper = mapper;
+            _specificationsApiClient = specificationsApiClient;
+            _datasetsApiClient = datasetsApiClient;
+            _providerSourceDatasetsRepository = providerSourceDatasetsRepository;
+            _calculationAggregationService = calculationAggregationService;
+            _specificationsApiPolicy = resiliencePolicies.SpecificationsApiClient;
+            _datasetsApiPolicy = resiliencePolicies.DatasetsApiClient;
+            _providersApiClientPolicy = resiliencePolicies.ProvidersApiClient;
+            _calculationsApiClientPolicy = resiliencePolicies.CalculationsApiClient;
+            _calculationsRepository = calculationsRepository;
+            _logger = logger;
+        }
+
+        public async Task<IActionResult> PreviewCalculationResult(
+            string specificationId, 
+            string providerId,
+            PreviewCalculationRequest previewCalculationRequest)
+        {
+            Guard.IsNullOrWhiteSpace(specificationId, nameof(specificationId));
+            Guard.IsNullOrWhiteSpace(providerId, nameof(providerId));
+            Guard.ArgumentNotNull(previewCalculationRequest, nameof(previewCalculationRequest));
+
+            Assembly assembly = Assembly.Load(previewCalculationRequest.AssemblyContent);
+            IAllocationModel allocationModel = _calculationEngine.GenerateAllocationModel(assembly);
+
+            SpecificationSummary specificationSummary = await GetSpecificationSummary(specificationId);
+
+            IEnumerable<DatasetSpecificationRelationshipViewModel> datasetRelationships = await GetRelationshipsBySpecificationId(specificationId);
+
+            //Filtering the FDS dataset type that has mapped datasource and all other relationship types
+            IEnumerable<string> dataRelationshipIds = datasetRelationships.
+                Where(_ => (_.RelationshipType != Common.ApiClient.DataSets.Models.DatasetRelationshipType.FDS)
+                || (_.DatasetId != null && _.RelationshipType == Common.ApiClient.DataSets.Models.DatasetRelationshipType.FDS)).Select(_ => _.Id).ToList();
+
+            ApiResponse<ProviderVersionSearchResult> providerVersionSearchResultApiResponse =
+                await _providersApiClientPolicy.ExecuteAsync(() => _providersApiClient.GetProviderByIdFromProviderVersion(
+                    specificationSummary.ProviderVersionId,
+                    providerId));
+            ProviderVersionSearchResult providerVersionSearchResult = providerVersionSearchResultApiResponse.Content;
+            
+            if(providerVersionSearchResult == null)
+            {
+                return new NotFoundResult();
+            }
+            
+            ProviderSummary providerSummary = _mapper.Map<ProviderSummary>(providerVersionSearchResult);
+
+            List<CalculationSummaryModel> calculationSummaries = new List<CalculationSummaryModel>();
+            IEnumerable<CalculationSummaryModel> specCalculationSummaries = await GetCalculationSummaries(specificationId);
+
+            calculationSummaries.AddRange(specCalculationSummaries);
+            calculationSummaries.Add(previewCalculationRequest.PreviewCalculationSummaryModel);
+
+            Dictionary<string, Dictionary<string, ProviderSourceDataset>> providerSourceDatasets =
+                await _providerSourceDatasetsRepository.GetProviderSourceDatasetsByProviderIdsAndRelationshipIds(
+                specificationId,
+                new[] { providerId },
+                dataRelationshipIds);
+
+            Dictionary<string, ProviderSourceDataset> providerSourceDataset = providerSourceDatasets[providerId];
+
+            BuildAggregationRequest buildAggregationRequest = new BuildAggregationRequest
+            {
+                SpecificationId = specificationId,
+                GenerateCalculationAggregationsOnly = true,
+                BatchCount = 100,
+                CalculationAggregationData = previewCalculationRequest.CalculationAggregationData
+            };
+            IEnumerable<CalculationAggregation> calculationAggregations =
+                await _calculationAggregationService.BuildAggregations(buildAggregationRequest);
+
+            ProviderResult providerResult = _calculationEngine.CalculateProviderResults(
+                allocationModel,
+                specificationId,
+                calculationSummaries,
+                providerSummary,
+                providerSourceDataset,
+                calculationAggregations
+                );
+
+            return new OkObjectResult(providerResult);
+        }
+
+        private async Task<SpecificationSummary> GetSpecificationSummary(string specificationId)
+        {
+            ApiResponse<SpecificationSummary> specificationQuery = 
+                await _specificationsApiPolicy.ExecuteAsync(() => _specificationsApiClient.GetSpecificationSummaryById(specificationId));
+            if (specificationQuery == null || specificationQuery.StatusCode != HttpStatusCode.OK || specificationQuery.Content == null)
+            {
+                throw new InvalidOperationException("Specification summary is null");
+            }
+
+            return specificationQuery.Content;
+        }
+
+        private async Task<IEnumerable<DatasetSpecificationRelationshipViewModel>> GetRelationshipsBySpecificationId(string specificationId)
+        {
+            ApiResponse<IEnumerable<DatasetSpecificationRelationshipViewModel>> datasetRelationshipsQuery = await _datasetsApiPolicy.ExecuteAsync(() => _datasetsApiClient.GetRelationshipsBySpecificationId(specificationId));
+            if (datasetRelationshipsQuery.StatusCode != HttpStatusCode.OK || datasetRelationshipsQuery?.Content == null || !datasetRelationshipsQuery.Content.Any())
+            {
+                throw new InvalidOperationException("No Dataset relationships are available");
+            }
+
+            return datasetRelationshipsQuery.Content;
+        }
+
+        private async Task<IEnumerable<CalculationSummaryModel>> GetCalculationSummaries(string specificationId)
+        {
+            IEnumerable<CalculationSummaryModel> calculations = await _calculationsApiClientPolicy.ExecuteAsync(() =>
+                _calculationsRepository.GetCalculationSummariesForSpecification(specificationId));
+
+            if (calculations == null)
+            {
+                _logger.Error($"Calculations lookup API returned null for specification id {specificationId}");
+
+                throw new InvalidOperationException("Calculations lookup API returned null");
+            }
+            return calculations;
+        }
+    }
+}

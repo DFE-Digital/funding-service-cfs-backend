@@ -1,0 +1,3 @@
+Example usage:
+
+dotnet CalculateFunding.Migrations.Specification.Etl.dll --search-name "Search Name" --search-key "Search API Key" --src-spec-id "613f08dd-2619-4e36-a602-9c32d8ffff3a" --maxthroughput "10000" --src-storage-account-key "Storage Account Key" --src-storage-account-name "Storage Account Name" --src-account-endpoint "Cosmos End Point" --src-account-key "Cosmos Account Key" --src-database "calculate-funding" --dst-storage-account-key "Storage Account Key" --dst-storage-account-name "Storage Account Name" --dst-account-endpoint "Cosmos End Point" --dst-account-key "Cosmos Account Key" --dst-database "calculate-funding"

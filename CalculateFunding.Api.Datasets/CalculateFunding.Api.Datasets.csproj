@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <UserSecretsId>df0d69d5-a6db-4598-909f-262fc39cb8c8</UserSecretsId>
+    <LangVersion>12.0</LangVersion>
+    <FileVersion>1.0.0.$(VersionSuffix)</FileVersion>
+  </PropertyGroup>
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="wwwroot\" />
+  </ItemGroup>
+  <ItemGroup>
+    
+    
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Calcs" Version="7.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Graph" Version="4.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Jobs" Version="6.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Policies" Version="6.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Specifications" Version="5.0.0" />
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.20.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="8.0.13" />
+    
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CalculateFunding.Repositories.Common.EFCore\CalculateFunding.Repositories.Common.EFCore.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Core.AspNet\CalculateFunding.Services.Core.AspNet.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Datasets\CalculateFunding.Services.Datasets.csproj" />
+  </ItemGroup>
+</Project>
+

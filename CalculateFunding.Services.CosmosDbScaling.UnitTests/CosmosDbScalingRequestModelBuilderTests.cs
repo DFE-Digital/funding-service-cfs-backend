@@ -1,0 +1,111 @@
+﻿using System.Collections.Generic;
+using System.Linq;
+using CalculateFunding.Common.ApiClient.Jobs.Models;
+using CalculateFunding.Common.Extensions;
+using CalculateFunding.Models.CosmosDbScaling;
+using CalculateFunding.Services.Core.Constants;
+using FluentAssertions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+namespace CalculateFunding.Services.CosmosDbScaling
+{
+    [TestClass]
+    public class CosmosDbScalingRequestModelBuilderTests : CosmosDbScalingTestsBase
+    {
+        [TestMethod]
+        public void BuildRequestModel_GivenJobNotificationWithDefinitionNotConfiguredForScaling_ContainsNoRepositoryTypes()
+        {
+            //Arrange
+            JobSummary jobNotification = new JobSummary
+            {
+                JobType = "any-job-def-id"
+            };
+
+            CosmosDbScalingRequestModelBuilder builder = new CosmosDbScalingRequestModelBuilder();
+
+            //Act
+            CosmosDbScalingRequestModel requestModel = builder.BuildRequestModel(cosmosDbScalingConfig, jobNotification);
+
+            //Assert
+            requestModel
+                .RepositoryTypes
+                .Should()
+                .BeNull();
+        }
+
+#if NCRUNCH
+        [Ignore]
+#endif
+        [TestMethod]
+        [DataRow(JobConstants.DefinitionNames.CreateInstructAllocationJob,
+            new[] { CosmosCollectionType.CalculationProviderResults, CosmosCollectionType.ProviderSourceDatasets })]
+        [DataRow(JobConstants.DefinitionNames.PopulateCalculationResultsQaDatabaseJob,
+            new[] { CosmosCollectionType.CalculationProviderResults })]
+        [DataRow(JobConstants.DefinitionNames.CreateInstructGenerateAggregationsAllocationJob,
+            new[] { CosmosCollectionType.ProviderSourceDatasets })]
+        [DataRow(JobConstants.DefinitionNames.MapDatasetJob,
+            new[] { CosmosCollectionType.ProviderSourceDatasets })]
+        [DataRow(JobConstants.DefinitionNames.RefreshFundingJob,
+            new[] { CosmosCollectionType.PublishedFunding, CosmosCollectionType.CalculationProviderResults })]
+        [DataRow(JobConstants.DefinitionNames.PublishAllProviderFundingJob,
+            new[] { CosmosCollectionType.PublishedFunding })]
+        [DataRow(JobConstants.DefinitionNames.ReleaseProvidersToChannelsJob,
+            new[] { CosmosCollectionType.PublishedFunding })]
+        [DataRow(JobConstants.DefinitionNames.ApproveAllProviderFundingJob,
+            new[] { CosmosCollectionType.PublishedFunding })]
+        [DataRow(JobConstants.DefinitionNames.DeleteCalculationResultsJob,
+            new[] { CosmosCollectionType.Calculations })]
+        [DataRow(JobConstants.DefinitionNames.DeleteCalculationsJob,
+            new[] { CosmosCollectionType.Calculations })]
+        [DataRow(JobConstants.DefinitionNames.AssignTemplateCalculationsJob,
+            new[] { CosmosCollectionType.Calculations })]
+        [DataRow(JobConstants.DefinitionNames.DeleteDatasetsJob,
+            new[] { CosmosCollectionType.Datasets })]
+        [DataRow(JobConstants.DefinitionNames.PublishBatchProviderFundingJob,
+            new[] { CosmosCollectionType.PublishedFunding })]
+        [DataRow(JobConstants.DefinitionNames.ApproveBatchProviderFundingJob,
+            new[] { CosmosCollectionType.PublishedFunding })]
+        [DataRow(JobConstants.DefinitionNames.DeletePublishedProvidersJob,
+            new[] { CosmosCollectionType.PublishedFunding })]
+        [DataRow(JobConstants.DefinitionNames.PublishedFundingUndoJob,
+            new[] { CosmosCollectionType.PublishedFunding })]
+        [DataRow(JobConstants.DefinitionNames.DeleteSpecificationJob,
+            new[] { CosmosCollectionType.Specifications })]
+        [DataRow(JobConstants.DefinitionNames.ApproveAllCalculationsJob,
+            new[] { CosmosCollectionType.Calculations })]
+        [DataRow(JobConstants.DefinitionNames.MergeSpecificationInformationForProviderJob,
+            new[] { CosmosCollectionType.CalculationProviderResults, CosmosCollectionType.Jobs })]
+        [DataRow(JobConstants.DefinitionNames.PublishIntegrityCheckJob,
+            new[] { CosmosCollectionType.PublishedFunding })]
+        [DataRow(JobConstants.DefinitionNames.GenerateCalcCsvResultsJob,
+            new[] { CosmosCollectionType.CalculationProviderResults })]
+        [DataRow(JobConstants.DefinitionNames.RunSqlImportJob,
+            new[] { CosmosCollectionType.PublishedFunding })]
+        [DataRow(JobConstants.DefinitionNames.ReleaseManagementDataMigrationJob,
+            new[] { CosmosCollectionType.PublishedFunding })]
+        [DataRow(JobConstants.DefinitionNames.GeneratePublishedProviderStateSummaryCsvJob,
+            new[] { CosmosCollectionType.PublishedFunding })]
+        public void BuildRequestModel_GivenJobWithDefinitions_EnsuresCorrectRepositoryTypes(string jobDefinitionId,
+            CosmosCollectionType[] cosmosRepositoryTypes)
+        {
+            //Arrange
+            JobSummary jobNotification = new JobSummary
+            {
+                JobType = jobDefinitionId
+            };
+
+            CosmosDbScalingRequestModelBuilder builder = new CosmosDbScalingRequestModelBuilder();
+
+            //Act
+            CosmosDbScalingRequestModel requestModel = builder.BuildRequestModel(cosmosDbScalingConfig, jobNotification);
+
+            //Assert
+            requestModel
+                 .RepositoryTypes
+                 .OrderBy(_ => _)
+                 .SequenceEqual(cosmosRepositoryTypes.OrderBy(_ => _))
+                 .Should()
+                 .BeTrue();
+        }
+    }
+}

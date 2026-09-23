@@ -1,0 +1,36 @@
+{
+  "id": "<ID>",
+  "documentType": "DefinitionSpecificationRelationship",
+  "content": {
+    "current": {
+      "datasetDefinition": {
+        "id": "<DEFINITIONID>",
+        "name": "<DEFINITIONNAME>"
+      },
+      "specification": {
+        "id": "<SPECIFICATIONID>",
+        "name": "<SPECIFICATIONNAME>"
+      },
+      "description": "<DESCRIPTION>",
+      "datasetVersion": {
+        "id": "<DATASETID>",
+        "name": "<DATASETVERSION>"
+      },
+      "isSetAsProviderData": true,
+      "converterEnabled": "<CONVERTERENABLED>",
+      "publishedSpecificationConfuration": <PUBLISHEDSPECIFICATIONCONFIURATION>,
+      "usedInDataAggregations": false,
+      "lastUpdated": "<NOW>",
+      "author": {
+        "id": "unknown",
+        "name": "unknown"
+      },
+      "relationshipType": "<DATASETRELATIONSHIPTYPE>",
+      "id": "<ID>",
+      "name": "<NAME>"
+    }
+  },
+  "createdAt": "<NOW>",
+  "updatedAt": "<NOW>",
+  "deleted": false
+}

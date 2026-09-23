@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AzureFunctionsVersion>v4</AzureFunctionsVersion>
+    <LangVersion>12.0</LangVersion>
+    <FileVersion>1.0.0.$(VersionSuffix)</FileVersion>
+	<OutputType>Exe</OutputType>
+	<ImplicitUsings>enable</ImplicitUsings>
+	<DockerFastModeProjectMountDirectory>/home/site/wwwroot</DockerFastModeProjectMountDirectory>
+	<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+	<UserSecretsId>86597de6-f1d3-4da1-b272-0a4d58fa472e</UserSecretsId>
+  </PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="CalculateFunding.Common.Config.ApiClient.Jobs" Version="6.0.0" />
+		<PackageReference Include="CalculateFunding.Common.Config.ApiClient.Specifications" Version="5.0.0" />
+		<PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.22.2" />
+		<PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.3.0" />
+		<PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.18.1" />
+		<PackageReference Include="Microsoft.Azure.Functions.Worker" Version="1.24.0" />
+		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+	</ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CalculateFunding.Services.Core.Functions\CalculateFunding.Services.Core.Functions.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Core\CalculateFunding.Services.Core.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Processing\CalculateFunding.Services.Processing.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Users\CalculateFunding.Services.Users.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="host.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="local.settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+	<Using Include="System.Threading.ExecutionContext" Alias="ExecutionContext" />
+  </ItemGroup>
+</Project>
+

@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <DebugType>full</DebugType>
+    <LangVersion>12.0</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    
+    <PackageReference Include="CacheCow.Server.Core.Mvc" Version="2.9.0" />
+    
+    
+    <PackageReference Include="CalculateFunding.Common.ApiClient.Graph" Version="6.0.0" />
+    <PackageReference Include="CalculateFunding.Common.ApiClient.Policies" Version="9.0.2" />
+    <PackageReference Include="CalculateFunding.Common.ApiClient.Calcs" Version="10.0.0" />
+    <PackageReference Include="CalculateFunding.Common.ApiClient.Results" Version="8.0.0" />
+    <PackageReference Include="CalculateFunding.Common.ApiClient.Specifications" Version="8.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Results" Version="7.0.0" />
+    <PackageReference Include="CalculateFunding.Common.JobManagement" Version="9.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Sql" Version="5.0.3" />
+    <PackageReference Include="CalculateFunding.Common.Storage" Version="4.0.0" />
+    <PackageReference Include="LINQKit.Core" Version="1.2.2" />
+    
+    
+    <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" Version="2.2.0" />
+    
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CalculateFunding.Models.Calcs\CalculateFunding.Models.Calcs.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Models.Messages\CalculateFunding.Models.Messages.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Repositories.Common.EFCore\CalculateFunding.Repositories.Common.EFCore.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Repositories.Common.Search\CalculateFunding.Repositories.Common.Search.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Core\CalculateFunding.Services.Core.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Processing\CalculateFunding.Services.Processing.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.SqlExport\CalculateFunding.Services.SqlExport.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Helpers\" />
+    <Folder Include="MappingProfiles\" />
+  </ItemGroup>
+</Project>
+

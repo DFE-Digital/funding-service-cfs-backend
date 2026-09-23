@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "CalculateFunding.Migrations.Specification.Clone": {
+      "commandName": "Project",
+      "commandLineArgs": "--src-spec-id \"d64d8d89-0700-40c6-b468-c01ee5264621\" --trg-period-id \"AS-2223\" --trg-funding-template-version \"5.0\" --include-released-data-dataset true --convert-uploaded-data-to-fds-data true"
+    }
+  }
+}

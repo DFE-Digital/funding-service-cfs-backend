@@ -1,0 +1,232 @@
+name: $(Rev:r)
+
+pool:
+  vmImage: ubuntu-latest
+
+trigger:
+  branches:
+    include:
+    - master
+    - providers
+    - fdps
+    - releases/*
+  paths:
+    include:
+    - CalculateFunding.Api.Jobs
+    - CalculateFunding.Functions.Jobs
+    - CalculateFunding.Services.Jobs
+    - CalculateFunding.Services.Jobs.UnitTests
+    - CalculateFunding.Services.Core
+    - CalculateFunding.Services.Notifications
+    - CalculateFunding.Api.Notifications
+    - CalculateFunding.Functions.Notifications
+    - CalculateFunding.Functions.Notifications.UnitTests
+    - CalculateFunding.Services.Notifications.UnitTests
+    - CalculateFunding.Models.Jobs
+
+variables:
+ - name: ProjectName
+   value: 'Jobs'
+ - name: ServiceName
+   value: 'Jobs'
+ - name: templateName
+   value: jobs
+ - name: releaseconfiguration
+   value: 'release'
+ - name: DOTNET_SKIP_FIRST_TIME_EXPERIENCE
+   value: true
+ - name: DOTNET_CLI_TELEMETRY_OPTOUT 
+   value: true
+ - name: BuildApi
+   value: true
+ - name: BuildFunction
+   value: true
+ - name: SecureSmokeTest
+   value: false
+ # Docker / ACR
+ - name: acrName
+   value: cfsdevsharedacr
+
+ - name: acrLoginServer
+   value: cfsdevsharedacr.azurecr.io
+
+ - name: dockerRegistryServiceConnection
+   value: CFS-DEV-ACR
+
+ - name: imageTag
+   value: $(Build.BuildId)
+
+ - name: patToken
+   value: $(System.AccessToken)
+
+ # Variable Groups   
+ - group: 'Dotnet Core SDK Version'
+ - group: 'Azure Settings Integration-v2'
+ - group: 'Integration Tests Info - Integration-PR' 
+ - group: 'Integration Tests KV - Integration-PR'
+ - group: 'Shared Infrastructure - Integration - v2'
+ - group: 'Resource Tags test-v2 integration-v2'
+ - group: 'Feature Toggles Integration-v2'
+ 
+ 
+# ==================================================
+# STAGE 1 - BUILD & PUSH DOCKER IMAGES
+# ==================================================
+
+stages:
+- stage: Build
+  displayName: Build and Push Images
+
+  jobs:
+  - job: DockerBuild
+    displayName: Build Docker Images
+    condition: succeeded()
+    steps:
+    - task: Docker@2
+      displayName: Build API Image
+      condition: eq(variables['BuildApi'], 'true')
+      inputs:
+        command: build
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: jobs-api
+        Dockerfile: $(Build.SourcesDirectory)/CalculateFunding.Api.Jobs/Dockerfile
+        buildContext: $(Build.SourcesDirectory)
+        arguments: >
+          --build-arg FEED_PAT=$(patToken)
+        tags: |
+          $(imageTag)
+          latest
+
+    - task: Docker@2
+      displayName: Push API Image
+      condition: eq(variables['BuildApi'], 'true')
+      inputs:
+        command: push
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: jobs-api
+        tags: |
+          $(imageTag)
+          latest
+
+
+    - task: Docker@2
+      displayName: Build Function Image
+      condition: eq(variables['BuildFunction'], 'true')
+      inputs:
+        command: build
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: jobs-function
+        dockerfile: $(Build.SourcesDirectory)/CalculateFunding.Functions.Jobs/Dockerfile
+        buildContext: $(Build.SourcesDirectory)
+        arguments: >
+          --build-arg FEED_PAT=$(patToken)
+        tags: |
+          $(imageTag)
+          latest
+
+    - task: Docker@2
+      displayName: Push Function Image
+      condition: eq(variables['BuildFunction'], 'true')
+      inputs:
+        command: push
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: jobs-function
+        tags: |
+          $(imageTag)
+          latest
+
+
+# ==================================================
+# STAGE 2 - PR INFRA + DEPLOY
+# ==================================================
+
+- stage: PR_Infra
+  displayName: Deploy PR Infrastructure
+  dependsOn: Build
+  condition: succeeded()
+
+  jobs:
+  - job: DeployInfra
+    steps:
+     - ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
+       - template: templates\standard-service-arm-deploy-linux.yml
+         parameters:
+           ServiceName: ${{ variables.ServiceName }}
+           ResourceGroup: $(ResourceGroup)
+           azureSubscription: $(azureSubscription)
+           templateName : $(templateName)
+           overrideParameters: '-environmentKey "$(EnvironmentKey)" -productVersion "pr" -appServiceLogRetentionDays "0" -sendWebLogsToStorage "false" -enableExceptionMessages "false" -FUNCTIONS_EXTENSION_VERSION $(FUNCTIONS_EXTENSION_VERSION_net6) -apiHostingPlanName "$(apiHostingPlanNamePR)" -functionHostingPlanName "$(functionHostingPlanNamePR)" -keyVaultName "$(keyVaultNamePR)" -sharedLogStorageName "$(sharedLogStorageName))" -environmentTag "$(environmentTag)" -parentBusinessTag "$(parentBusinessTag)" -portfolioTag "$(portfolioTag)" -productTag "$(productTag)" -serviceLineTag "$(serviceLineTag)" -Http5xxTH "100" -Http401TH "100" -HttpResponseTimeTH "100" -applicationInsightsName "$(applicationInsightsName)" -logAnalyticsWorkspaceName "$(logAnalyticsWorkspaceName)" -dfeT1VNetResourceGroupName "$(dfeT1VNetResourceGroupName)" -dfeT1VirtualNetworkName "$(dfeT1VirtualNetworkName)" -appSrvSubnetName "$(appSrvSubnetNamePR)" -intJobsAStoVNet "true" -funcsSubnetName "$(funcsSubnetNamePR)" -intJobsFAtoVNet "true" -calcEngineFASubnetName "$(calcEngineFASubnetNamePR)" -ipSecurityRestrictionsEnabled "false" -ipSecurityRestrictionsEnabledFA "false"'
+
+     - template: templates\standard-service-pr-ci-build-prinfra-linux.yml
+       parameters:
+         ProjectName: ${{ variables.ProjectName }}
+         ServiceName: ${{ variables.ServiceName }} 
+         DotnetCoreSdkVersion: $(DotnetCoreSdkVersionNet8)
+         ApiFrameworkVersion: 'net8.0'
+         ResourceGroup: $(ResourceGroup)
+         ServiceBusSettings: $(ServiceBusSettingsPR)
+         azureSubscription: '$(azureSubscription)'
+         environmentKey: $(EnvironmentKey)
+         BuildApi: ${{ variables.BuildApi }}
+         BuildFunction: ${{ variables.BuildFunction }}
+         SecureSmokeTest: ${{ variables.SecureSmokeTest }}
+         APIKey: $(svcapijobs)
+
+# ==================================================
+# STAGE 3 - INTEGRATION TESTS
+# ==================================================
+
+- stage: IntegrationTests
+  displayName: Run Integration Tests
+  dependsOn: PR_Infra
+  condition: and(
+    succeeded(),
+    eq(variables['Build.Reason'], 'PullRequest'),
+    eq(variables['runIntegrationTests'], 'true'))
+
+  jobs:
+  - job: RunTests
+    steps:
+     # ✅ Restore using private feed because Those packages are not public NuGet packages. They're internal CalculateFunding packages hosted in your Azure DevOps Artifacts feed.
+     - task: DotNetCoreCLI@2
+       displayName: Restore Integration Test Projects
+       inputs:
+         command: restore
+         projects: |
+           **/*Api.${{ variables.ProjectName }}.IntegrationTests/*.csproj
+         feedsToUse: select
+         vstsFeed: 'ecf37bc0-472b-47bf-91e3-6774809fd194'
+     # ✅ Run Integration Tests
+     - task: DotNetCoreCLI@2
+       condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'), eq(variables.runIntegrationTests, true))
+       displayName: 'dotnet test for Integration tests'
+       inputs:
+         command: 'test'
+         projects: |
+          **/*Api.jobs.IntegrationTests/*.csproj
+         arguments: '--configuration Release /p:AssemblyVersion=$(Build.BuildNumber)'
+       env:
+         AzureConfiguration__ConnectionString: $(AzureConfigurationConnectionString)
+         AzureStorageSettings__ConnectionString: $(AzureStorageSettings)
+         CommonStorageSettings__ConnectionString: $(AzureStorageSettings)
+         CosmosDbSettings__ConnectionString: $(CosmosDbSettings)
+         CosmosDbSettings__ContainerName: 'jobs'
+         CosmosDbSettings__DatabaseName: $(CosmosDbSettingsDatabaseName)
+         RedisSettings__CacheConnection: $(RedisSettings)
+         ResourceGroup: $(ResourceGroup)
+         ServiceBusSettings__ConnectionString: $(ServiceBusSettingsPR)
+         storageConfiguration__ConnectionString: $(AzureStorageSettings)
+         WEBSITE_HTTPLOGGING_CONTAINER_URL: $(WEBSITE_HTTPLOGGING_CONTAINER_URL)
+         apiKeyMiddleware__apiKey: $(svcapijobs)
+         cfsClient__ApiEndpoint: $(cfsClientApiEndpoint)
+         jobsClient__ApiEndpoint: $(jobsClientApiEndpoint)
+         jobsClient__ApiKey: $(svcapijobs)
+         
+     - task: AzureCLI@2
+       condition: and(failed(), eq(variables['Build.Reason'], 'PullRequest'))
+       displayName: 'Reset in-progress swap on failure'
+       inputs:
+         azureSubscription: $(azureSubscription)
+         scriptType: pscore
+         scriptLocation: inlineScript
+         inlineScript: 'az webapp deployment slot swap --action reset --slot Staging --name app-$(EnvironmentKey)-${{ variables.ServiceName }}-pr --resource-group $(ResourceGroup)'

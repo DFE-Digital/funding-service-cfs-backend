@@ -1,0 +1,171 @@
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Azure.Messaging.ServiceBus;
+using CalculateFunding.Common.JobManagement;
+using CalculateFunding.Common.Models;
+using CalculateFunding.Common.Utility;
+using CalculateFunding.Models.Policy;
+using CalculateFunding.Models.Policy.TemplateBuilder;
+using CalculateFunding.Repositories.Common.Search;
+using CalculateFunding.Services.Core;
+using CalculateFunding.Services.Core.Extensions;
+using CalculateFunding.Services.Policy.Interfaces;
+using CalculateFunding.Services.Processing;
+using Microsoft.Extensions.Configuration;
+using Polly;
+using Serilog;
+
+namespace CalculateFunding.Services.Policy.TemplateBuilder
+{
+    public class TemplatesReIndexerService : JobProcessingService, ITemplatesReIndexerService
+    {
+        private readonly ILogger _logger;
+        private readonly IJobManagement _jobManagement;
+        private readonly ISearchRepository<TemplateIndex> _searchRepository;
+        private readonly AsyncPolicy _searchRepositoryResilience;
+        private readonly ITemplateRepository _templatesRepository;
+        private readonly AsyncPolicy _templatesRepositoryResilience;
+        private readonly IConfiguration _configuration;
+        private const int BatchSize = 1000;
+
+        public TemplatesReIndexerService(ISearchRepository<TemplateIndex> searchRepository,
+            IPolicyResiliencePolicies policyResiliencePolicies,
+            IPolicyRepository policyRepository,
+            ITemplateRepository templateRepository,
+            IConfiguration configuration,
+            IJobManagement jobManagement,
+            ILogger logger) : base(jobManagement, logger)
+        {
+            Guard.ArgumentNotNull(searchRepository, nameof(searchRepository));
+            Guard.ArgumentNotNull(policyResiliencePolicies?.TemplatesSearchRepository,
+                nameof(policyResiliencePolicies.TemplatesSearchRepository));
+            Guard.ArgumentNotNull(policyRepository, nameof(policyRepository));
+            Guard.ArgumentNotNull(policyResiliencePolicies?.PolicyRepository,
+                nameof(policyResiliencePolicies.PolicyRepository));
+            Guard.ArgumentNotNull(templateRepository, nameof(templateRepository));
+            Guard.ArgumentNotNull(policyResiliencePolicies?.TemplatesRepository,
+                nameof(policyResiliencePolicies.TemplatesRepository));
+            Guard.ArgumentNotNull(jobManagement, nameof(jobManagement));
+            Guard.ArgumentNotNull(logger, nameof(logger));
+
+            _searchRepository = searchRepository;
+            _searchRepositoryResilience = policyResiliencePolicies.TemplatesSearchRepository;
+            _templatesRepository = templateRepository;
+            _templatesRepositoryResilience = policyResiliencePolicies.TemplatesRepository;
+            _jobManagement = jobManagement;
+            _logger = logger;   
+            _configuration = configuration;
+        }
+
+        public override async Task Process(ServiceBusReceivedMessage message)
+        {
+            Guard.ArgumentNotNull(message, nameof(message));
+
+            Reference user = message.GetUserDetails();
+            var enableEfCoreSqlFlag = GetEnableEfCoreSqlFlag();
+            if (enableEfCoreSqlFlag) 
+            {
+                //Reading data from sql          
+                var templateData = await _templatesRepository.GetTemplatesFromSqlForIndexing();
+
+                if (templateData.Any())
+                {
+                    IList<TemplateIndex> results = new List<TemplateIndex>();
+                    var templatesBatchs = templateData.Chunk(BatchSize);
+
+                    foreach (var templates in templatesBatchs)
+                    {
+                        foreach (var template in templates)
+                        {
+                            results.Add(new TemplateIndex
+                            {
+                                Id = template.TemplateId,
+                                Name = template.Name,
+                                FundingStreamId = template.FundingStream.Id,
+                                FundingStreamName = template.FundingStream.Name,
+                                FundingPeriodId = template.FundingPeriod.Id,
+                                FundingPeriodName = template.FundingPeriod.Name,
+                                LastUpdatedAuthorId = template.Current.Author?.Id,
+                                LastUpdatedAuthorName = template.Current.Author?.Name,
+                                LastUpdatedDate = template.Current.Date,
+                                Version = template.Current.Version,
+                                Status = template.Current.Status.ToString(),
+                                CurrentMajorVersion = template.Current.MajorVersion,
+                                CurrentMinorVersion = template.Current.MinorVersion,
+                                PublishedMajorVersion = template.Released?.MajorVersion ?? 0,
+                                PublishedMinorVersion = template.Released?.MinorVersion ?? 0,
+                                HasReleasedVersion = template.Released?.Status != null ? "Yes" : "No"
+                            });
+                        }
+                        IEnumerable<IndexError> errors =
+                        await _searchRepositoryResilience.ExecuteAsync(() => _searchRepository.Index(results));
+
+                        if (errors != null && errors.Any())
+                        {
+                            string errorMessage =
+                                $"Failed to index published provider documents with errors: {string.Join(";", errors.Select(m => m.ErrorMessage))}";
+
+                            _logger.Error(errorMessage);
+
+                            throw new NonRetriableException(errorMessage);
+                        }
+                    }
+
+                }
+            }
+           
+            //CosmosCode
+            await _templatesRepositoryResilience.ExecuteAsync(() => _templatesRepository.GetTemplatesForIndexing(
+                async templates =>
+                {
+                    IList<TemplateIndex> results = new List<TemplateIndex>();
+
+                    foreach (Template template in templates)
+                    {
+                        results.Add(new TemplateIndex
+                        {
+                            Id = template.TemplateId,
+                            Name = template.Name,
+                            FundingStreamId = template.FundingStream.Id,
+                            FundingStreamName = template.FundingStream.Name,
+                            FundingPeriodId = template.FundingPeriod.Id,
+                            FundingPeriodName = template.FundingPeriod.Name,
+                            LastUpdatedAuthorId = template.Current.Author?.Id,
+                            LastUpdatedAuthorName = template.Current.Author?.Name,
+                            LastUpdatedDate = template.Current.Date,
+                            Version = template.Current.Version,
+                            Status = template.Current.Status.ToString(),
+                            CurrentMajorVersion = template.Current.MajorVersion,
+                            CurrentMinorVersion = template.Current.MinorVersion,
+                            PublishedMajorVersion = template.Released?.MajorVersion ?? 0,
+                            PublishedMinorVersion = template.Released?.MinorVersion ?? 0,
+                            HasReleasedVersion = template.Released?.Status != null ? "Yes" : "No"
+                        });
+                    }
+
+                    IEnumerable<IndexError> errors =
+                        await _searchRepositoryResilience.ExecuteAsync(() => _searchRepository.Index(results));
+
+                    if (errors != null && errors.Any())
+                    {
+                        string errorMessage =
+                            $"Failed to index published provider documents with errors: {string.Join(";", errors.Select(m => m.ErrorMessage))}";
+
+                        _logger.Error(errorMessage);
+
+                        throw new NonRetriableException(errorMessage);
+                    }
+                },
+                BatchSize));
+
+        }
+
+        private bool GetEnableEfCoreSqlFlag()
+        {
+            bool efCoreSqlFlag = _configuration.GetValue<bool>("UseSQLDB");
+            _logger.Information($"Get EnableEfCoreSqlFlag Form TemplatesReIndexerService For TemplateRepository :{efCoreSqlFlag}");
+            return efCoreSqlFlag;
+        }
+    }
+}

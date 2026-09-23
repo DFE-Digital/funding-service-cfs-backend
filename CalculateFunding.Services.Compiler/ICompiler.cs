@@ -1,0 +1,15 @@
+﻿using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+using CalculateFunding.Models.Calcs;
+
+namespace CalculateFunding.Services.Compiler
+{
+    public interface ICompiler
+    {
+        Build GenerateCode(List<SourceFile> sourcefiles,
+            IEnumerable<Calculation> calculations);
+
+        IDictionary<string, string> GetCalculationFunctions(IEnumerable<SourceFile> sourceFiles);
+    }
+}

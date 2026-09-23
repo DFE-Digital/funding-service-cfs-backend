@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <LangVersion>12.0</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    
+    
+    <PackageReference Include="CalculateFunding.Common.ApiClient.Specifications" Version="8.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Specifications" Version="5.0.0" />
+    <PackageReference Include="FluentAssertions" Version="5.10.3" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="2.2.8" />
+    <PackageReference Include="MSTest.TestFramework" Version="2.2.8" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CalculateFunding.IntegrationTests.Common\CalculateFunding.IntegrationTests.Common.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Specs\CalculateFunding.Services.Specs.csproj" />
+  </ItemGroup>
+</Project>
+

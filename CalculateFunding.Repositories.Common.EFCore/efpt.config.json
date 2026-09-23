@@ -1,0 +1,198 @@
+﻿{
+   "CodeGenerationMode": 4,
+   "ContextClassName": "CfsDbContext",
+   "ContextNamespace": null,
+   "FilterSchemas": false,
+   "IncludeConnectionString": false,
+   "ModelNamespace": null,
+   "OutputContextPath": null,
+   "OutputPath": "EntityModel",
+   "PreserveCasingWithRegex": true,
+   "ProjectRootNamespace": "CalculateFunding.Repositories.Common.EFCore",
+   "Schemas": null,
+   "SelectedHandlebarsLanguage": 2,
+   "SelectedToBeGenerated": 0,
+   "T4TemplatePath": null,
+   "Tables": [
+      {
+         "Name": "[dbo].[CalcResults]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Calculations]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[CalculationVersions]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ConverterDataMergeLogs]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[CurrentProviderVersion]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[DatasetAggregationFields]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[DatasetAggregations]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[DatasetDefinitions]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Datasets]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[DatasetSpecificationRelationships]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[DatasetVersions]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[DefinitionSpecificationRelationships]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[FundingLineResults]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[FundingPeriods]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[FundingStreamPeriodProfilePatterns]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[FundingStreams]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ObsoleteItemCalcs]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ObsoleteItems]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Policies]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Predecessors]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ProfilePatternPeriods]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ProviderResults]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Providers]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ProviderSourceDatasets]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ProviderSourceDatasetVersions]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ProviderSpecificationResults]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ProviderTypeSubTypes]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ProviderVersionFundingPeriodDetails]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ProviderVersionMetadata]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ReProfilingConfigurationProperties]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Specifications]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[SpecificationVersions]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Successors]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[TemplateMappingItems]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[TemplateMappings]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[TemplatePredecessors]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Templates]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[TemplateVersions]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[VariationPointers]",
+         "ObjectType": 0
+      }
+   ],
+   "UiHint": null,
+   "UncountableWords": null,
+   "UseAsyncStoredProcedureCalls": true,
+   "UseBoolPropertiesWithoutDefaultSql": false,
+   "UseDatabaseNames": false,
+   "UseDateOnlyTimeOnly": false,
+   "UseDbContextSplitting": false,
+   "UseDecimalDataAnnotationForSprocResult": true,
+   "UseFluentApiOnly": true,
+   "UseHandleBars": false,
+   "UseHierarchyId": false,
+   "UseInflector": true,
+   "UseLegacyPluralizer": false,
+   "UseManyToManyEntity": false,
+   "UseNoDefaultConstructor": false,
+   "UseNoNavigations": false,
+   "UseNoObjectFilter": false,
+   "UseNodaTime": false,
+   "UseNullableReferences": false,
+   "UsePrefixNavigationNaming": false,
+   "UseSchemaFolders": false,
+   "UseSchemaNamespaces": false,
+   "UseSpatial": false,
+   "UseT4": false
+}

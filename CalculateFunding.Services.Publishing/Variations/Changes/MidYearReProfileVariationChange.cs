@@ -1,0 +1,140 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using CalculateFunding.Common.ApiClient.Profiling.Models;
+using CalculateFunding.Models.Publishing;
+using CalculateFunding.Services.Core.Extensions;
+using CalculateFunding.Services.Publishing.Interfaces;
+using CalculateFunding.Services.Publishing.Models;
+using CalculateFunding.Services.Publishing.Profiling;
+
+namespace CalculateFunding.Services.Publishing.Variations.Changes
+{
+    public class MidYearReProfileVariationChange : ReProfileVariationChange
+    {
+        private readonly string _strategy;
+
+        private readonly IEnumerable<string> _indicativeToLiveFundingLines;
+
+        protected override string ChangeName => "Mid year re-profile variation change";
+
+        protected override bool ShouldPersistReProfileAudit(ReProfileRequest reProfileRequest) => true;
+
+        public MidYearReProfileVariationChange(ProviderVariationContext variationContext,
+            string strategy,
+            IEnumerable<string> indicativeToLiveFundingLines = null) : base(variationContext, strategy)
+        {
+            _strategy = strategy;
+            _indicativeToLiveFundingLines = indicativeToLiveFundingLines;
+        }
+
+        protected override IEnumerable<string> GetAffectedFundingLines => VariationContext.AffectedFundingLinesWithVariationPointerSet(_strategy);
+
+        public override bool ReProfileForSameAmountFunc(string fundingLineCode, string profilePatternKey, ReProfileAudit reProfileAudit, int paidUpToIndex)
+        {
+            // always re-profile on indicative to live
+            if (_indicativeToLiveFundingLines.AnyWithNullCheck(_ => _ == fundingLineCode)) return true;
+
+            bool executeSameAsKey = base.ReProfileForSameAmountFunc(fundingLineCode, profilePatternKey, reProfileAudit, paidUpToIndex);
+
+            if (!executeSameAsKey)
+            {
+                int? variationPointerIndex = reProfileAudit?.VariationPointerIndex;
+
+                executeSameAsKey = reProfileAudit == null || variationPointerIndex != paidUpToIndex;
+            }
+
+            return executeSameAsKey;
+        }
+
+        protected override PublishedProviderVersion GetState(PublishedProviderVersion currentState, PublishedProviderVersion priorState, bool sameAsAmount)
+        {
+            // if re-profiling is skipped then for mid-year re-profiling we need to copy the current state to the refresh state
+            // as we use the last current state to calculate the mid-year funding
+            return currentState;
+        }
+
+        protected override Task<(ReProfileRequest, bool)> BuildReProfileRequest(string fundingLineCode,
+            PublishedProviderVersion refreshState,
+            PublishedProviderVersion priorState,
+            PublishedProviderVersion currentState,
+            IApplyProviderVariations variationApplications,
+            string profilePatternKey,
+            ReProfileAudit reProfileAudit,
+            FundingLine fundingLine,
+            Func<string, string, ReProfileAudit, int, bool> reProfileForSameAmountFunc) =>
+            variationApplications.ReProfilingRequestBuilder.BuildReProfileRequest(fundingLineCode,
+                profilePatternKey,
+                BuildCurrentPublishedProvider(currentState, refreshState, fundingLine),
+                fundingLine.Value,
+                reProfileAudit,
+                midYearType: GetMidYearType(refreshState.Provider?.DateOpened, fundingLine),
+                variationApplications.IsReProfileVariationAppliedOnDemand,
+                priorState?.ReProfiledOnDemandProfiles != null ? priorState.ReProfiledOnDemandProfiles.Where(_ => _.FundingLineCode.Equals(fundingLineCode)).Any() : false,
+                reProfileForSameAmountFunc: reProfileForSameAmountFunc);
+
+        protected PublishedProviderVersion BuildCurrentPublishedProvider(PublishedProviderVersion currentState, PublishedProviderVersion refreshState, FundingLine refreshFundingLine)
+        {
+            if (currentState == null)
+            {
+                return currentState;
+            }
+
+            // copy the current published provider so we don't get side effects
+            PublishedProviderVersion currentPublishedProvider = currentState.DeepCopy();
+
+            FundingLine fundingLine = currentPublishedProvider.FundingLines?.SingleOrDefault(_ => _.FundingLineCode == refreshFundingLine.FundingLineCode);
+
+            if (fundingLine != null && fundingLine.Value.HasValue && fundingLine.Value != 0)
+            {
+                // return the prior current state as it has a value it will have distribution periods set
+                return currentState;
+            }
+            else
+            {
+                if (fundingLine == null)
+                {
+                    // copy the refreshed funding line so we don't get side effects
+                    fundingLine = refreshFundingLine.DeepCopy();
+
+                    // add the funding line to the current published provider
+                    currentPublishedProvider.FundingLines = (currentPublishedProvider.FundingLines ?? ArraySegment<FundingLine>.Empty).Concat(new[] { fundingLine });
+                }
+                else
+                {
+                    // the current funding line value is either zero or null so we need to copy the distribution periods from the refreshed funding line
+                    fundingLine.DistributionPeriods = refreshFundingLine.DistributionPeriods?.DeepCopy();
+                }
+            }
+
+            if (fundingLine.DistributionPeriods.AnyWithNullCheck())
+            {
+                // if the current funding line value is null or 0 we need to populate the distribution periods
+                foreach (DistributionPeriod distributionPeriod in fundingLine.DistributionPeriods)
+                {
+                    distributionPeriod.Value = 0;
+
+                    if (distributionPeriod.ProfilePeriods.AnyWithNullCheck())
+                    {
+                        foreach (ProfilePeriod profilePeriod in distributionPeriod.ProfilePeriods)
+                        {
+                            profilePeriod.ProfiledValue = 0;
+                        }
+                    }
+                }
+            }
+
+            return currentPublishedProvider;
+        }
+
+        private MidYearType GetMidYearType(DateTimeOffset? dateTimeOpened, FundingLine fundingLine)
+        {
+            ProfilePeriod firstPeriod =  new YearMonthOrderedProfilePeriods(fundingLine).ToArray().First();
+
+            DateTimeOffset? openedDate = dateTimeOpened;
+            bool catchup = openedDate == null ? false : openedDate.Value.Month < YearMonthOrderedProfilePeriods.MonthNumberFor(firstPeriod.TypeValue) && openedDate.Value.Year <= firstPeriod.Year;
+            return catchup ? MidYearType.OpenerCatchup : MidYearType.Opener;
+        }
+    }
+}

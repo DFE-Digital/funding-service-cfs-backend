@@ -1,0 +1,46 @@
+using Azure.Messaging.EventHubs;
+using CalculateFunding.Common.Utility;
+using CalculateFunding.Services.Core;
+using CalculateFunding.Services.Core.Constants;
+using CalculateFunding.Services.CosmosDbScaling.Interfaces;
+using Microsoft.Azure.Functions.Worker;
+using Serilog;
+
+namespace CalculateFunding.Functions.CosmosDbScaling.EventHubs
+{
+    public class OnCosmosDbDiagnosticsReceived
+    {
+
+        private readonly ILogger _logger;
+        private readonly ICosmosDbScalingService _scalingService;
+
+        public OnCosmosDbDiagnosticsReceived(
+           ILogger logger,
+           ICosmosDbScalingService scalingService)
+        {
+            Guard.ArgumentNotNull(logger, nameof(logger));
+            Guard.ArgumentNotNull(scalingService, nameof(scalingService));
+
+            _logger = logger;
+            _scalingService = scalingService;
+        }
+
+        [Function("OnCosmosDbDiagnosticsReceived")]
+        public async Task Run([EventHubTrigger(EventHubsConstants.Hubs.EventHubNameKey, Connection = EventHubsConstants.ConnectionStringConfigurationKey)] EventData[] events)
+        {
+            try
+            {
+                await _scalingService.ScaleUp(events);
+            }
+            catch (NonRetriableException nrEx)
+            {
+                _logger.Error(nrEx, $"An error occurred processing messages on event hub for configuration key: {EventHubsConstants.Hubs.EventHubNameKey}");
+            }
+            catch (Exception exception)
+            {
+                _logger.Error(exception, $"An error occurred processing messages on event hub for configuration key: {EventHubsConstants.Hubs.EventHubNameKey}");
+                throw;
+            }
+        }
+    }
+}

@@ -1,0 +1,75 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DefineConstants>
+    </DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="Resources\exampleFundingLineTemplate1.json" />
+    <None Remove="Resources\exampleProvider1Calculations.json" />
+    <None Remove="Resources\exampleProvider1DistributionPeriods.json" />
+    <None Remove="Resources\exampleProvider2Calculations.json" />
+    <None Remove="Resources\exampleProvider2DistributionPeriods.json" />
+    <None Remove="Resources\exampleProvider3Calculations.json" />
+    <None Remove="Resources\exampleProvider3DistributionPeriods.json" />
+    <None Remove="Resources\exampleProvider4Calculations.json" />
+    <None Remove="Resources\exampleProvider4Calculations_Schema1_1.json" />
+    <None Remove="Resources\exampleProviderTemplate1.json" />
+    <None Remove="Resources\exampleProviderTemplateInformation1_Schema1_1.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Batches\Resources\batch_2.xlsx" />
+    <EmbeddedResource Include="Resources\exampleProvider1DistributionPeriods.json" />
+    <EmbeddedResource Include="Resources\exampleProvider4Calculations.json" />
+    <EmbeddedResource Include="Resources\exampleProvider4Calculations_Schema1_1.json" />
+    <EmbeddedResource Include="Resources\exampleProvider3DistributionPeriods.json" />
+    <EmbeddedResource Include="Resources\exampleProvider2DistributionPeriods.json" />
+    <EmbeddedResource Include="Resources\exampleFundingLineTemplate1.json" />
+    <EmbeddedResource Include="Resources\exampleProvider1Calculations.json" />
+    <EmbeddedResource Include="Resources\exampleProvider1Calculations_Schema1_1.json" />
+    <EmbeddedResource Include="Resources\exampleProvider2Calculations.json" />
+    <EmbeddedResource Include="Resources\exampleProvider2Calculations_Schema1_1.json" />
+    <EmbeddedResource Include="Resources\exampleProvider3Calculations.json" />
+    <EmbeddedResource Include="Resources\exampleProvider3Calculations_Schema1_1.json" />
+    <EmbeddedResource Include="Resources\exampleProviderTemplateInformation1_Schema1_1.json" />
+    <EmbeddedResource Include="Resources\exampleProviderTemplate1_Schema1_1.json" />
+    <EmbeddedResource Include="Resources\exampleProviderTemplate1_Schema1_0.json" />
+    <None Remove="Variations\Changes\profiled.json" />
+    <EmbeddedResource Include="Variations\Changes\profiled.json" />
+    <None Remove="Variations\Changes\released.json" />
+    <EmbeddedResource Include="Variations\Changes\released.json" />
+    <None Remove="Batches\Resources\batch_1.xlsx" />
+    <EmbeddedResource Include="Batches\Resources\batch_1.xlsx" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="AutoFixture" Version="4.17.0" />
+    
+    
+    
+    
+    
+    <PackageReference Include="CalculateFunding.Common.TemplateMetadata.Schema10" Version="4.0.0" />
+    <PackageReference Include="CalculateFunding.Common.TemplateMetadata.Schema11" Version="4.0.0" />
+    <PackageReference Include="CalculateFunding.Generators.OrganisationGroup" Version="4.0.0" />
+    <PackageReference Include="FluentAssertions" Version="5.10.3" />
+    
+    
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
+    <PackageReference Include="Moq" Version="4.16.1" />
+    <PackageReference Include="MSTest.TestAdapter" Version="2.2.8" />
+    <PackageReference Include="MSTest.TestFramework" Version="2.2.8" />
+    <PackageReference Include="NSubstitute" Version="4.2.1" />
+    
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CalculateFunding.Services.Profiling.Tests\CalculateFunding.Services.Profiling.Tests.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Profiling\CalculateFunding.Services.Profiling.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Publishing\CalculateFunding.Services.Publishing.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Tests.Common\CalculateFunding.Tests.Common.csproj" />
+    <ProjectReference Include="..\CalculateFunding.UnitTests.ApiClientHelpers.Jobs\CalculateFunding.UnitTests.ApiClientHelpers.Jobs.csproj" />
+  </ItemGroup>
+</Project>
+

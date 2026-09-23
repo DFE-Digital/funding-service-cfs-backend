@@ -1,0 +1,60 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <UserSecretsId>df0d69d5-a6db-4598-909f-262fc39cb8c8</UserSecretsId>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+    <LangVersion>12.0</LangVersion>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <FileVersion>1.0.0.$(VersionSuffix)</FileVersion>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="Swagger\DocsTopContents.v3.md" />
+    <None Remove="Swagger\DocsTopContents.v4.md" />
+    <None Remove="Swagger\Helpers\DocsTopContents.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Swagger\DocsTopContents.v4.md">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Swagger\DocsTopContents.v3.md">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    
+    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="7.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Policies" Version="6.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Specifications" Version="5.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Jobs" Version="6.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Calcs" Version="7.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Profiling" Version="4.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Storage" Version="4.0.0" />
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.20.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="8.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Versioning" Version="5.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer" Version="5.0.0" />
+	<PackageReference Include="CalculateFunding.Common.ApiClient.Policies" Version="9.0.3" />
+    <PackageReference Include="Microsoft.Extensions.PlatformAbstractions" Version="1.1.0" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
+    <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.7" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CalculateFunding.Generators.Schema10\CalculateFunding.Generators.Schema10.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Generators.Schema11\CalculateFunding.Generators.Schema11.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Generators.Schema12\CalculateFunding.Generators.Schema12.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Repositories.Common.Search\CalculateFunding.Repositories.Common.Search.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Core.AspNet\CalculateFunding.Services.Core.AspNet.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Core\CalculateFunding.Services.Core.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.External\CalculateFunding.Services.External.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Publishing\CalculateFunding.Services.Publishing.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="CsvHelper">
+      <HintPath>..\..\..\..\.nuget\packages\csvhelper\6.1.0\lib\netstandard2.0\CsvHelper.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
+

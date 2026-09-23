@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <LangVersion>12.0</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="Resources\CalculationTemplate.json" />
+    <None Remove="Resources\FundingTemplateTemplate.json" />
+    <None Remove="Resources\SpecificationTemplate.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\CalculationTemplate.json" />
+    <EmbeddedResource Include="Resources\FundingTemplateTemplate.json" />
+    <EmbeddedResource Include="Resources\SpecificationTemplate.json" />
+  </ItemGroup>
+  <ItemGroup>
+    
+    
+    <PackageReference Include="CalculateFunding.Common.ApiClient.Results" Version="8.0.0" />
+    <PackageReference Include="CalculateFunding.Common.Config.ApiClient.Results" Version="7.0.0" />
+    <PackageReference Include="FluentAssertions" Version="5.10.3" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="2.2.8" />
+    <PackageReference Include="MSTest.TestFramework" Version="2.2.8" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CalculateFunding.IntegrationTests.Common\CalculateFunding.IntegrationTests.Common.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Results\CalculateFunding.Services.Results.csproj" />
+  </ItemGroup>
+</Project>
+

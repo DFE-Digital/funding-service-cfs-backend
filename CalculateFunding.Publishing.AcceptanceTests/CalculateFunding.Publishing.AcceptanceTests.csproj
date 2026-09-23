@@ -1,0 +1,317 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="ReleaseManagementData\FDZ\76-paymentorganisations.json" />
+    <None Remove="ReleaseManagementData\FDZ\77-paymentorganisations.json" />
+    <None Remove="ReleaseManagementData\FDZ\78-paymentorganisations.json" />
+    <None Remove="ReleaseManagementData\FundingConfigurations\PSG-AY-2122-Batch.json" />
+    <None Remove="ReleaseManagementData\PublishedProviders\publishedprovider-10071688-AY-2122-PSG.json" />
+    <None Remove="ReleaseManagementData\PublishedProviders\publishedprovider-10071689-AY-2122-PSG.json" />
+    <None Remove="ReleaseManagementData\PublishedProviders\publishedprovider-10071690-AY-2122-PSG-2_0.json" />
+    <None Remove="ReleaseManagementData\PublishedProviders\publishedprovider-10071690-AY-2122-PSG.json" />
+    <None Remove="Resources\16191.2.json" />
+    <None Remove="Resources\DSG1.0.json" />
+    <None Remove="Resources\DSG1.0.Variations.json" />
+    <None Remove="Resources\GAG1.2.json" />
+    <None Remove="Resources\Input\CalculationResults\1619-approve-all-funding-calculations.json" />
+    <None Remove="Resources\Input\CalculationResults\gag-approve-all-funding-calculations.json" />
+    <None Remove="Resources\Input\ProviderVersions\1619-providers-1_0.json" />
+    <None Remove="Resources\Input\ProviderVersions\gag-providers-1_0.json" />
+    <None Remove="Resources\Input\ProviderVersions\PSG-2021-10-11-76.json" />
+    <None Remove="Resources\Input\ProviderVersions\PSG-2021-10-11-77.json" />
+    <None Remove="Resources\Input\ProviderVersions\PSG-2021-10-11-78.json" />
+    <None Remove="Resources\Input\PublishedProviders\1619-AS-2021-1000000.json" />
+    <None Remove="Resources\Input\PublishedProviders\1619-AS-2021-1000002.json" />
+    <None Remove="Resources\Input\PublishedProviders\GAG-AC-2021-1000002.json" />
+    <None Remove="Resources\Input\TemplateMapping\1619-TemplateMapping.json" />
+    <None Remove="Resources\Input\TemplateMapping\GAG-TemplateMapping.json" />
+    <None Remove="Resources\PSG-AY-1920-Information-Provider-1000201-1_0.json" />
+    <None Remove="Resources\PSG-AY-1920-Information-Provider-1000202-1_0.json" />
+    <None Remove="Resources\PSG-AY-1920-Payment-AcademyTrust-8000001-1_0.json" />
+    <None Remove="Resources\PSG-AY-1920-Payment-LocalAuthority-9000000-1_0.json" />
+    <None Remove="Resources\psg1.0.json" />
+    <None Remove="Resources\PSG1.2.json" />
+    <None Remove="Resources\PublishedFunding\1619-AS-2021-Information-LocalAuthority-200-1_0.json" />
+    <None Remove="Resources\PublishedFunding\1619-AS-2021-Payment-LocalAuthority-9000000-1_0.json" />
+    <None Remove="Resources\PublishedFunding\DSG-FY-2021-Information-LocalAuthority-200-1_0.json" />
+    <None Remove="Resources\PublishedFunding\DSG-FY-2021-Payment-LocalAuthority-9000000-1_0.json" />
+    <None Remove="Resources\PublishedFunding\GAG-AC-2021-Information-LocalAuthority-200-1_0.json" />
+    <None Remove="Resources\PublishedFunding\GAG-AC-2021-Payment-LocalAuthority-9000000-1_0.json" />
+    <None Remove="Resources\PublishedProviders\1619-AS-2021-1000000-1_0.json" />
+    <None Remove="Resources\PublishedProviders\1619-AS-2021-1000002-1_0.json" />
+    <None Remove="Resources\PublishedProviders\DSG-FY-2021-1000000-1_0.json" />
+    <None Remove="Resources\PublishedProviders\DSG-FY-2021-1000002-1_0.json" />
+    <None Remove="Resources\PublishedProviders\GAG-AC-2021-1000000-1_0.json" />
+    <None Remove="Resources\PublishedProviders\GAG-AC-2021-1000002-1_0.json" />
+    <None Remove="Resources\PublishedProviders\GAG-FY-2021-1000000-1_0_1.json" />
+    <None Remove="Resources\PublishedProviders\PSG-AY-1920-1000000-1_0.json" />
+    <None Remove="Resources\PublishedProviders\PSG-AY-1920-1000002-1_0.json" />
+    <None Remove="Resources\PublishedProviders\PSG-AY-1920-1000101-1_0.json" />
+    <None Remove="Resources\PublishedProviders\PSG-AY-1920-1000102-1_0.json" />
+    <None Remove="Resources\PublishedProviders\PSG-AY-1920-1000201-1_0.json" />
+    <None Remove="Resources\PublishedProviders\PSG-AY-1920-1000202-1_0.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\ApproveAllFundingDsg - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\ApproveAllFundingGag - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\ApproveBatchFundingDsg - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\ApproveFundingDsg - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\ApproveFundingPsg - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\PublishingAllFundingDsg - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\PublishingAllFundingPsg - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\PublishingBatchFundingDsg - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\PublishingPsg - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\Refresh1619 - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\RefreshDsg - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\RefreshDsgVariations - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\RefreshGAG - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\RefreshPsg - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\RefreshPsgVariations - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\ReleaseManagement\ReleaseManagement-InitialRelease - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\ReleaseManagement\ReleaseManagement-SubsequentRelease - Copy.feature.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="ReleaseManagementData\FDZ\76-paymentorganisations.json" />
+    <EmbeddedResource Include="ReleaseManagementData\FDZ\77-paymentorganisations.json" />
+    <EmbeddedResource Include="ReleaseManagementData\FDZ\78-paymentorganisations.json" />
+    <EmbeddedResource Include="ReleaseManagementData\FundingConfigurations\PSG-AY-2122-Batch.json" />
+    <EmbeddedResource Include="ReleaseManagementData\PublishedProviders\publishedprovider-10071689-AY-2122-PSG.json" />
+    <EmbeddedResource Include="ReleaseManagementData\PublishedProviders\publishedprovider-10071690-AY-2122-PSG-2_0.json" />
+    <EmbeddedResource Include="ReleaseManagementData\PublishedProviders\publishedprovider-10071690-AY-2122-PSG.json" />
+    <EmbeddedResource Include="ReleaseManagementData\PublishedProviders\publishedprovider-10071688-AY-2122-PSG.json" />
+    <EmbeddedResource Include="Resources\16191.2.json" />
+    <EmbeddedResource Include="Resources\GAG1.2.json" />
+    <EmbeddedResource Include="Resources\DSG1.0.Variations.json" />
+    <EmbeddedResource Include="Resources\DSG1.0.json" />
+    <EmbeddedResource Include="Resources\Input\CalculationResults\1619-approve-all-funding-calculations.json" />
+    <EmbeddedResource Include="Resources\Input\CalculationResults\gag-approve-all-funding-calculations.json" />
+    <EmbeddedResource Include="Resources\Input\ProviderVersions\1619-providers-1_0.json" />
+    <EmbeddedResource Include="Resources\Input\ProviderVersions\gag-providers-1_0.json" />
+    <EmbeddedResource Include="Resources\Input\ProviderVersions\PSG-2021-10-11-78.json" />
+    <EmbeddedResource Include="Resources\Input\ProviderVersions\PSG-2021-10-11-77.json" />
+    <EmbeddedResource Include="Resources\Input\ProviderVersions\PSG-2021-10-11-76.json" />
+    <EmbeddedResource Include="Resources\Input\PublishedProviders\1619-AS-2021-1000000.json" />
+    <EmbeddedResource Include="Resources\Input\PublishedProviders\1619-AS-2021-1000002.json" />
+    <EmbeddedResource Include="Resources\Input\PublishedProviders\GAG-AC-2021-1000002.json" />
+    <EmbeddedResource Include="Resources\Input\TemplateMapping\1619-TemplateMapping.json" />
+    <EmbeddedResource Include="Resources\Input\TemplateMapping\GAG-TemplateMapping.json" />
+    <EmbeddedResource Include="Resources\PSG1.2.json" />
+    <EmbeddedResource Include="Resources\PublishedFunding\1619-AS-2021-Information-LocalAuthority-200-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedFunding\1619-AS-2021-Payment-LocalAuthority-9000000-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedFunding\GAG-AC-2021-Payment-LocalAuthority-9000000-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedFunding\GAG-AC-2021-Information-LocalAuthority-200-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedFunding\DSG-FY-2021-Information-LocalAuthority-200-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedFunding\DSG-FY-2021-Payment-LocalAuthority-9000000-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedFunding\PSG-AY-1920-Information-Provider-1000201-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedFunding\PSG-AY-1920-Information-Provider-1000202-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedFunding\PSG-AY-1920-Payment-AcademyTrust-8000001-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedFunding\PSG-AY-1920-Payment-LocalAuthority-9000000-1_0.json" />
+    <EmbeddedResource Include="Resources\PSG1.0.json" />
+    <EmbeddedResource Include="Resources\Input\PublishedProviders\GAG-AC-2021-1000000.json" />
+    <EmbeddedResource Include="Resources\PublishedProviders\1619-AS-2021-1000000-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedProviders\1619-AS-2021-1000002-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedProviders\GAG-AC-2021-1000002-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedProviders\GAG-AC-2021-1000000-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedProviders\DSG-FY-2021-1000000-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedProviders\DSG-FY-2021-1000002-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedProviders\PSG-AY-1920-1000000-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedProviders\PSG-AY-1920-1000002-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedProviders\PSG-AY-1920-1000101-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedProviders\PSG-AY-1920-1000102-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedProviders\PSG-AY-1920-1000201-1_0.json" />
+    <EmbeddedResource Include="Resources\PublishedProviders\PSG-AY-1920-1000202-1_0.json" />
+  </ItemGroup>
+  <ItemGroup>
+    
+    
+    <PackageReference Include="CalculateFunding.Common.TemplateMetadata.Schema10" Version="4.0.0" />
+    <PackageReference Include="CalculateFunding.Common.TemplateMetadata.Schema11" Version="4.0.0" />
+    <PackageReference Include="CalculateFunding.Common.TemplateMetadata.Schema12" Version="3.0.2" />
+    <PackageReference Include="FluentAssertions" Version="5.10.3" />
+    <PackageReference Include="Microsoft.Azure.Storage.Blob" Version="11.2.2" />
+    
+    
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="2.2.8" />
+    <PackageReference Include="MSTest.TestFramework" Version="2.2.8" />
+    
+    <PackageReference Include="SpecFlow" Version="3.9.52" />
+    <PackageReference Include="SpecFlow.MsTest" Version="3.9.52" />
+    <PackageReference Include="SpecFlow.Tools.MsBuild.Generation" Version="3.9.52" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CalculateFunding.Generators.Schema10\CalculateFunding.Generators.Schema10.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Generators.Schema11\CalculateFunding.Generators.Schema11.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Generators.Schema12\CalculateFunding.Generators.Schema12.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Models.Specs\CalculateFunding.Models.Specs.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Core\CalculateFunding.Services.Core.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Publishing\CalculateFunding.Services.Publishing.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Tests.Common\CalculateFunding.Tests.Common.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Update="Features\Approve\ApproveAllFundingGag.feature.cs">
+      <DependentUpon>ApproveAllFundingGag.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\Approve\ApproveBatchFunding1619.feature.cs">
+      <DependentUpon>ApproveBatchFunding1619.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\Approve\ApproveBatchFundingGag.feature.cs">
+      <DependentUpon>ApproveBatchFundingGag.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\Approve\ApproveBatchFundingDsg.feature.cs">
+      <DependentUpon>ApproveBatchFundingDsg.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\Approve\ApproveBatchFundingPsg.feature.cs">
+      <DependentUpon>ApproveBatchFundingPsg.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\PublishFunding\PublishingAllFunding1619.feature.cs">
+      <DependentUpon>PublishingAllFunding1619.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\PublishFunding\PublishingAllFundingGag.feature.cs">
+      <DependentUpon>PublishingAllFundingGag.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\PublishFunding\PublishingBatchFunding1619.feature.cs">
+      <DependentUpon>PublishingBatchFunding1619.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\PublishFunding\PublishingBatchFundingGag.feature.cs">
+      <DependentUpon>PublishingBatchFundingGag.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\PublishFunding\PublishingBatchFundingPsg.feature.cs">
+      <DependentUpon>PublishingBatchFundingPsg.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\PublishFunding\PublishingBatchFundingDsg.feature.cs">
+      <DependentUpon>PublishingBatchFundingDsg.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\PublishFunding\PublishingAllFundingDsg.feature.cs">
+      <DependentUpon>PublishingAllFundingDsg.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\Refresh\Refresh1619Variations.feature.cs">
+      <DependentUpon>Refresh1619Variations.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\Refresh\Refresh1619.feature.cs">
+      <DependentUpon>Refresh1619.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\Refresh\RefreshGAG.feature.cs">
+      <DependentUpon>RefreshGAG.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\Refresh\RefreshDsgVariations.feature.cs">
+      <DependentUpon>RefreshDsgVariations.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\Refresh\RefreshPsgVariations.feature.cs">
+      <DependentUpon>RefreshPsgVariations.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\ReleaseManagement\ReleaseManagement-SubsequentRelease-OneChannel.feature.cs">
+      <DependentUpon>ReleaseManagement-SubsequentRelease-OneChannel.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Features\ReleaseManagement\ReleaseManagement-SubsequentRelease-MultipleChannels.feature.cs">
+      <DependentUpon>ReleaseManagement-SubsequentRelease-MultipleChannels.feature</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <SpecFlowFeatureFiles Update="Features\Approve\ApproveAllFunding1619.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\Approve\ApproveAllFundingGag.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\Approve\ApproveBatchFunding1619.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\Approve\ApproveBatchFundingGag.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\Approve\ApproveBatchFundingDsg.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\Approve\ApproveBatchFundingPsg.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\PublishFunding\PublishingAllFunding1619.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\PublishFunding\PublishingAllFundingGag.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\PublishFunding\PublishingBatchFunding1619.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\PublishFunding\PublishingBatchFundingGag.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\PublishFunding\PublishingBatchFundingPsg.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\PublishFunding\PublishingBatchFundingDsg.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\PublishFunding\PublishingAllFundingDsg.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\Refresh\Refresh1619Variations.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\Refresh\Refresh1619.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\Refresh\RefreshDsgVariationsWithSecondOccurrence.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\Refresh\RefreshGAG.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\Refresh\RefreshDsgVariations.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\Refresh\RefreshPsgVariations.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\ReleaseManagement\ReleaseManagement-SubsequentRelease-OneChannel.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\ReleaseManagement\ReleaseManagement-SubsequentRelease-MultipleChannels.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+  </ItemGroup>
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties />
+    </VisualStudio>
+  </ProjectExtensions>
+</Project>
+

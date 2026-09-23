@@ -1,0 +1,59 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <LangVersion>12.0</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="calculationsWithDescriptions.dll.dat" />
+    <None Remove="calculationsWithEnums.dll.dat" />
+    <None Remove="calculationsWithListDatasets.dll.dat" />
+    <None Remove="out.dll.dat" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="calculationsWithDescriptions.dll.dat">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="calculationsWithListDatasets.dll.dat">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="out.dll.dat">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <None Remove="obsolete_enum_and_funding_lines.dll.dat" />
+    <Content Include="obsolete_enum_and_funding_lines.dll.dat">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    
+    
+    <PackageReference Include="FluentAssertions" Version="5.10.3" />
+    
+    
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="2.2.8" />
+    <PackageReference Include="MSTest.TestFramework" Version="2.2.8" />
+    <PackageReference Include="NSubstitute" Version="4.2.1" />
+    
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CalculateFunding.Services.CodeMetadataGenerator\CalculateFunding.Services.CodeMetadataGenerator.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Core\CalculateFunding.Services.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="calculationsWithEnums.dll.dat">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="TestNewProviderProperties.dll.dat">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="implementation.dll" />
+    <EmbeddedResource Include="implementation.dll" />
+  </ItemGroup>
+</Project>
+

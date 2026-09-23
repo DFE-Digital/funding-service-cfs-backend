@@ -1,0 +1,61 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <DebugType>full</DebugType>
+    <LangVersion>12.0</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    
+    
+    
+    
+    
+    <PackageReference Include="Serilog" Version="2.10.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="CodeResources\AllocationLineAttribute.vb" />
+    <None Remove="CodeResources\BaseCalculation.vb" />
+    <None Remove="CodeResources\CalculationAttribute.vb" />
+    <None Remove="CodeResources\CalculationSpecificationAttribute.vb" />
+    <None Remove="CodeResources\Common\Attributes\DatasetRelationshipAttribute.vb" />
+    <None Remove="CodeResources\Common\Attributes\DescriptionAttribute.vb" />
+    <None Remove="CodeResources\Common\Attributes\FieldAttribute.vb" />
+    <None Remove="CodeResources\Common\Attributes\FundingLineAttribute.vb" />
+    <None Remove="CodeResources\Common\Attributes\IsAggregableAttribute.vb" />
+    <None Remove="CodeResources\Common\CalculationStackOverflowException.vb" />
+    <None Remove="CodeResources\Common\DatasetReferenceChangeException.vb" />
+    <None Remove="CodeResources\Common\LegacyBaseCalculation.vb" />
+    <None Remove="CodeResources\Common\Provider.vb" />
+    <None Remove="CodeResources\Common\ReferencedCalculationFailedException.vb" />
+    <None Remove="CodeResources\Common\ReferencedFundingLineFailedException.vb" />
+    <None Remove="CodeResources\PolicySpecificationAttribute.vb" />
+    <None Remove="CodeResources\ProjectData.vb" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="CodeResources\Common\Attributes\DescriptionAttribute.vb" />
+    <EmbeddedResource Include="CodeResources\Common\Attributes\FundingLineAttribute.vb" />
+    <EmbeddedResource Include="CodeResources\Common\Attributes\IsAggregableAttribute.vb" />
+    <EmbeddedResource Include="CodeResources\Common\Attributes\FieldAttribute.vb" />
+    <EmbeddedResource Include="CodeResources\Common\Attributes\DatasetRelationshipAttribute.vb" />
+    <EmbeddedResource Include="CodeResources\CalculateFunding.vbproj" />
+    <EmbeddedResource Include="CodeResources\Common\Attributes\ObsoleteItemAttribute.vb" />
+    <EmbeddedResource Include="CodeResources\Common\CalculationStackOverflowException.vb" />
+    <EmbeddedResource Include="CodeResources\Common\ReferencedFundingLineFailedException.vb" />
+    <EmbeddedResource Include="CodeResources\Common\ReferencedCalculationFailedException.vb" />
+    <EmbeddedResource Include="CodeResources\Common\DatasetReferenceChangeException.vb" />
+    <EmbeddedResource Include="CodeResources\Common\Provider.vb" />
+    <EmbeddedResource Include="CodeResources\Common\BaseCalculation.vb" />
+    <EmbeddedResource Include="CodeResources\Common\Attributes\CalculationAttribute.vb" />
+    <EmbeddedResource Include="CodeResources\Common\Attributes\CalculationSpecificationAttribute.vb" />
+    <EmbeddedResource Include="CodeResources\Common\Attributes\PolicySpecificationAttribute.vb" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CalculateFunding.Models.Calcs\CalculateFunding.Models.Calcs.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Models.Datasets\CalculateFunding.Models.Datasets.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Models.Publishing\CalculateFunding.Models.Publishing.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.CodeGeneration.VisualBasic.Type\CalculateFunding.Services.CodeGeneration.VisualBasic.Type.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.CodeGeneration\CalculateFunding.Services.CodeGeneration.csproj" />
+    <ProjectReference Include="..\CalculateFunding.Services.Core\CalculateFunding.Services.Core.csproj" />
+  </ItemGroup>
+</Project>
+
