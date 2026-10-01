@@ -20,13 +20,11 @@ jobs:
     name: Audit - Containers
     uses: DFE-Digital/funding-service-workflows/.github/workflows/audit-container-trivy.yml@9fdf8fb5087ede6e1ef9eebcae72e87d78e6721c
     with:
-      dockerfilePath: api/Dockerfile
+      dockerfilePath: CalculateFunding.Api.Calcs/Dockerfile
 
- 
   build:
     name: Build and Publish
     uses: DFE-Digital/funding-service-workflows/.github/workflows/build-and-publish.yml@9fdf8fb5087ede6e1ef9eebcae72e87d78e6721c
-    # needs: [audit-containers, audit-dependencies, lint-yaml]
     needs: [audit-containers]
     with:
-      dockerfilePath: api/Dockerfile
+      dockerfilePath: CalculateFunding.Api.Calcs/Dockerfile
