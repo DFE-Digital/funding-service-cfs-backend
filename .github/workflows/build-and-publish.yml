@@ -1,10 +1,21 @@
+---
+name: Build and Publish
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
 permissions:
   contents: read
   packages: write
   id-token: write
 
 jobs:
-
   audit-containers:
     name: Audit - Containers
     uses: DFE-Digital/funding-service-workflows/.github/workflows/audit-container-trivy.yml@9fdf8fb5087ede6e1ef9eebcae72e87d78e6721c
