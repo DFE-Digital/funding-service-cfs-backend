@@ -20,43 +20,12 @@ jobs:
     name: Audit - Containers
     uses: DFE-Digital/funding-service-workflows/.github/workflows/audit-container-trivy.yml@9fdf8fb5087ede6e1ef9eebcae72e87d78e6721c
     with:
-      dockerfilePath: api/Dockerfile
-
-  # audit-dependencies:
-  #   name: Audit - Dependencies
-  #   uses: DFE-Digital/funding-service-workflows/.github/workflows/audit-dependency-dotnet.yml@9fdf8fb5087ede6e1ef9eebcae72e87d78e6721c
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       projects: [
-  #         api/Fds.Api.csproj,
-  #         core/Fds.Core.csproj,
-  #         data.fdz/Fdz.Data.csproj,
-  #         data/Fds.Data.csproj
-  #       ]
-
-  #   with:
-  #     # TODO: Confirm whether FDS requires a private NuGet feed.
-  #     # nugetSourceUrl: TODO
-
-  #     solution: ${{ matrix.projects }}
-
-  #   secrets:
-  #     nugetAuthToken: ${{ secrets.GITHUB_TOKEN }}
-
-  #   # # TODO: Remove if FDS does not require private NuGet authentication.
-  #   # secrets:
-  #   #   nugetAuthToken: TODO
-
-  # lint-yaml:
-  #   name: Lint - YAML
-  #   uses: DFE-Digital/funding-service-workflows/.github/workflows/lint-yaml.yml@9fdf8fb5087ede6e1ef9eebcae72e87d78e6721c
+      dockerfilePath: CalculateFunding.Api.Calcs/Dockerfile
 
   build:
     name: Build and Publish
     uses: DFE-Digital/funding-service-workflows/.github/workflows/build-and-publish.yml@9fdf8fb5087ede6e1ef9eebcae72e87d78e6721c
-    # needs: [audit-containers, audit-dependencies, lint-yaml]
-    needs: [audit-containers]
+    needs:
+      - audit-containers
     with:
-      dockerfilePath: api/Dockerfile
----
+      dockerfilePath: CalculateFunding.Api.Calcs/Dockerfile
