@@ -1,14 +1,3 @@
----
-name: Build and Publish for Main and Release branches
-
-on: # yamllint disable-line rule:truthy
-  push:
-    branches:
-      - "**"
-  pull_request:
-    branches:
-      - main
-
 permissions:
   contents: read
   packages: write
@@ -21,6 +10,8 @@ jobs:
     uses: DFE-Digital/funding-service-workflows/.github/workflows/audit-container-trivy.yml@9fdf8fb5087ede6e1ef9eebcae72e87d78e6721c
     with:
       dockerfilePath: CalculateFunding.Api.Calcs/Dockerfile
+    secrets:
+      buildArgs: FEED_PAT=${{ secrets.AZURE_DEVOPS_PAT }}
 
   build:
     name: Build and Publish
@@ -29,3 +20,5 @@ jobs:
       - audit-containers
     with:
       dockerfilePath: CalculateFunding.Api.Calcs/Dockerfile
+    secrets:
+      buildArgs: FEED_PAT=${{ secrets.AZURE_DEVOPS_PAT }}
